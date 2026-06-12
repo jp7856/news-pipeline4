@@ -46,6 +46,13 @@ _LEVEL_STYLE: dict[str, str] = {
         "- 전문 용어·수치 정확히 유지.\n"
         "- summary_ko: 4문장으로 요약."
     ),
+    # ⚠️ placeholder — junior 복사본. 에이전트 1-5 지침 입고 시 확정 필요
+    "junior_m": (
+        "독자: 중학생 (13~16세)\n"
+        "- 표준 한국어. 뉴스 기사체.\n"
+        "- 전문 용어 그대로 사용.\n"
+        "- summary_ko: 3문장으로 요약."
+    ),
 }
 
 _TRANSLATOR_SYSTEM = (

@@ -430,7 +430,7 @@
       document.getElementById("panel-article").innerHTML = `
         <h2>Article (초안)</h2>
         <div style="margin-bottom:10px">
-          <span class="stat">${level.toUpperCase()}</span>
+          <span class="stat">${level.toUpperCase().replace('_',' ')}</span>
           <span class="stat">${section}</span>
           <span class="stat">${article.word_count} words</span>
           <span class="stat ${plagiarismPassed ? 'pass' : 'fail'}">${plagiarismPassed ? 'PLAGIARISM PASS' : 'PLAGIARISM WARNING'}</span>
@@ -492,7 +492,7 @@
       document.getElementById("panel-article").innerHTML = `
         <h2>Article</h2>
         <div style="margin-bottom:10px">
-          <span class="stat">${r.level.toUpperCase()}</span>
+          <span class="stat">${r.level.toUpperCase().replace('_',' ')}</span>
           <span class="stat">${r.section}</span>
           <span class="stat">${r.article.word_count} words</span>
         </div>
@@ -785,7 +785,7 @@
       } else {
         el.innerHTML = [...list].reverse().map(h => `
           <div class="history-item" onclick="loadHistory(${h.idx})">
-            <span class="hi-badge">${h.level.toUpperCase()}</span>
+            <span class="hi-badge">${h.level.toUpperCase().replace('_',' ')}</span>
             <span class="hi-badge" style="background:#1e3a5f;color:#93c5fd">${h.section}</span>
             <span class="hi-topic">${esc(h.topic)}</span>
             <span class="hi-meta">${h.cost_krw ? h.cost_krw.toLocaleString() + "원 · " : ""}${h.created_at}</span>

@@ -78,7 +78,7 @@ def api_health():
 
 @app.route("/")
 def index():
-    levels = [{"value": lv.value, "label": lv.value.upper()} for lv in Level]
+    levels = [{"value": lv.value, "label": lv.value.upper().replace("_", " ")} for lv in Level]
     sections = [{"value": sc.value, "label": sc.value} for sc in Section]
     return render_template("index.html", levels=levels, sections=sections)
 

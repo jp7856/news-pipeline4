@@ -32,13 +32,15 @@ class WriterAgent:
         reference_format: str = "",
         source_content: str = "",
         real_sources: list[dict] | None = None,
+        guidelines: str = "",
     ) -> ArticleResult:
         """
         topic : 기사 주제 또는 뉴스 URL
-        level : 신문 레벨 (kinder/kids/junior/times)
+        level : 신문 레벨 (kinder/kids/junior/times/junior_m)
         section : 섹션 (과학/환경 등)
         reference_format : netimes.co.kr에서 가져온 포맷 샘플 텍스트
         real_sources : SourceFinder가 검색한 실제 기사 [{"title","url","snippet"}]
+        guidelines : 신문별 작성 지침 (agents/guidelines/*.md 본문 — 에이전트 1-X가 주입)
         """
         self._log(f"[Writer] 기사 작성 시작 — [{level.value}] {topic[:50]}")
         cfg = LEVEL_CONFIG[level.value]
@@ -73,7 +75,7 @@ Target readers: {cfg['target']}
 CEFR level: {cfg['cefr']}
 Target word count: {cfg['word_count_range']} words (Microsoft Word standard)
 Paragraphs: {cfg['paragraph_count']} paragraphs of roughly equal size
-{format_hint}
+{format_hint}{self._guideline_hint(guidelines, cfg)}
 
 Instructions:
 1. Search your knowledge for accurate, up-to-date information on this topic.
@@ -114,6 +116,16 @@ CRITICAL JSON RULES:
             f"어휘 {len(result.vocabulary)}개 / 출처 {len(result.sources)}개"
         )
         return result
+
+    @staticmethod
+    def _guideline_hint(guidelines: str, cfg: dict) -> str:
+        if not guidelines:
+            return ""
+        return (
+            f"\n\nNewspaper-specific writing guidelines for {cfg['newspaper']} "
+            f"(follow these strictly — they take priority over general instructions below):\n"
+            f"{guidelines}"
+        )
 
     def _call_claude(self, prompt: str) -> dict:
         message = self._client.messages.create(

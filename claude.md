@@ -2,8 +2,9 @@
 
 ## 프로젝트 개요
 
-영어 교육 신문(NE Times Kinder/Kids/Junior/Times) 콘텐츠 자동 생성 파이프라인.
+영어 교육 신문(NE Times Kinder/Kids/Junior/Times/Junior M) 콘텐츠 자동 생성 파이프라인.
 토픽 입력 → 기사 초안(표절 통과까지 자동 재작성) → AI 대화 수정 → 전체 제작 → 검수 → 발행 → 공개 사이트 게시.
+**에이전트 구성의 단일 기준은 ORCHESTRATION.md** — 에이전트 1은 신문별 1-1~1-5로 분리됨.
 
 ## 레포 & 배포
 
@@ -16,7 +17,8 @@
 ## 파이프라인 흐름 (v4 시작 시점)
 
 ```
-Generate → [Phase 1] SourceFinder(웹검색, 도메인 화이트리스트)
+Generate → 레벨로 에이전트 1-1~1-5 라우팅 (create_agent1, 지침: agents/guidelines/*.md)
+         → [Phase 1] SourceFinder(웹검색, 도메인 화이트리스트)
          → Writer → Plagiarism (실패 시 실패 항목 피드백으로 최대 3회 재작성)
          → 초안 미리보기 + 대화형 AI 수정/질문 (Reviser 채팅, 수정 시 표절 재검사)
          → [이후 작업 진행] → [Phase 2] Editor(자동반영) → Crossword + Workbook
@@ -42,8 +44,11 @@ Generate → [Phase 1] SourceFinder(웹검색, 도메인 화이트리스트)
 ## 핵심 파일
 
 ```
+ORCHESTRATION.md           # 에이전트 구성·지침 작성 규칙의 단일 기준
 orchestrator.py            # run_phase1/run_phase2, PipelineCancelled
-agents/content_producer.py # produce_article(표절 3회 루프) / produce_extras
+agents/level_agents.py     # 에이전트 1-1(KINDER)~1-5(JUNIOR M) + create_agent1 팩토리
+agents/guidelines/         # 신문별 작성 지침 마크다운 (Writer 프롬프트에 주입, 현재 placeholder)
+agents/content_producer.py # 에이전트 1 공통 베이스 — produce_article(표절 3회 루프) / produce_extras
 agents/sub_agents/
   source_finder.py         # 웹 검색 출처 (BBC/Reuters 등은 크롤러 차단 — 넣으면 400)
   reviser.py               # (article, reply, changed) 반환

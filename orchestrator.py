@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Callable
 
 from agents import ContentProducerAgent
+from agents.level_agents import create_agent1
 from agents.translator import TranslatorAgent
 from agents.image_finder import ImageFinderAgent
 from agents.worksheet import WorksheetAgent
@@ -65,8 +66,9 @@ class Orchestrator:
         self._log(f"    Section : {section.value}")
         self._log("")
 
-        producer = ContentProducerAgent(
-            log_callback=self._log, cancel_check=self._check_cancel
+        # 레벨에 따라 에이전트 1-1 ~ 1-5로 라우팅 (ORCHESTRATION.md 2절)
+        producer = create_agent1(
+            level, log_callback=self._log, cancel_check=self._check_cancel
         )
         article, plagiarism_report = producer.produce_article(
             topic, level, section, source_url=source_url

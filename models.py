@@ -16,10 +16,11 @@ class ArticleStatus(str, Enum):
 
 
 class Level(str, Enum):
-    KINDER = "kinder"    # 유치~초등저학년
-    KIDS = "kids"        # 초등고학년~중등
-    JUNIOR = "junior"    # 중등
-    TIMES = "times"      # 고등이상
+    KINDER = "kinder"      # 유치~초등저학년
+    KIDS = "kids"          # 초등고학년~중등
+    JUNIOR = "junior"      # 중등
+    TIMES = "times"        # 고등이상
+    JUNIOR_M = "junior_m"  # 신설 — 사양은 지침 입고 시 확정 (현재 junior 복사본)
 
 
 class Section(str, Enum):

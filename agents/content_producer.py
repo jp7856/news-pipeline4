@@ -9,6 +9,8 @@
 """
 
 import logging
+import re
+from pathlib import Path
 from typing import Callable
 
 import anthropic
@@ -29,8 +31,14 @@ logger = logging.getLogger(__name__)
 
 NETIMES_SAMPLE_URL = "https://www.netimes.co.kr"
 
+GUIDELINES_DIR = Path(__file__).parent / "guidelines"
+
 
 class ContentProducerAgent:
+    # 레벨별 서브클래스(agents/level_agents.py)가 재정의
+    AGENT_LABEL: str = "Agent1"
+    GUIDELINE_FILE: str | None = None  # agents/guidelines/ 아래 지침 마크다운 파일명
+
     def __init__(
         self,
         log_callback: Callable[[str], None] | None = None,
@@ -41,6 +49,7 @@ class ContentProducerAgent:
         from agents.sub_agents.usage_tracker import TrackedClient
         self._client = TrackedClient(api_key=ANTHROPIC_API_KEY)
         self._reference_format_cache: str = ""
+        self._guidelines = self._load_guidelines()
 
         # 서브에이전트 초기화 (클라이언트 공유)
         self._writer    = WriterAgent(self._client, log_callback=self._log)
@@ -56,7 +65,9 @@ class ContentProducerAgent:
 
         Returns: (article, plagiarism_report)
         """
-        self._log(f"[Agent1] 콘텐츠 제작 시작 — [{level.value}/{section.value}] {topic[:60]}")
+        self._log(f"[{self.AGENT_LABEL}] 콘텐츠 제작 시작 — [{level.value}/{section.value}] {topic[:60]}")
+        if self._guidelines:
+            self._log(f"[{self.AGENT_LABEL}] 작성 지침 적용 ({self.GUIDELINE_FILE}, {len(self._guidelines)}자)")
 
         # NE Times 포맷 참고 (캐시 활용)
         reference = self._get_reference_format()
@@ -80,6 +91,7 @@ class ContentProducerAgent:
             reference_format=reference,
             source_content=source_content,
             real_sources=real_sources,
+            guidelines=self._guidelines,
         )
 
         # 사용자가 직접 넣은 링크도 출처에 포함
@@ -102,7 +114,7 @@ class ContentProducerAgent:
                 for key, val in plagiarism_report.checklist.items()
                 if not val.get("pass")
             )
-            self._log(f"[Agent1] 표절 위험 감지 — 재작성 {attempt}/{max_retries}회")
+            self._log(f"[{self.AGENT_LABEL}] 표절 위험 감지 — 재작성 {attempt}/{max_retries}회")
             revised_topic = (
                 f"{topic}\n\n"
                 f"[REVISION NOTE — attempt {attempt}] The previous version failed "
@@ -116,12 +128,13 @@ class ContentProducerAgent:
                 reference_format=reference,
                 source_content=source_content,
                 real_sources=real_sources,
+                guidelines=self._guidelines,
             )
             plagiarism_report = self._plagcheck.run(article)
 
         if not plagiarism_report.passed:
             self._log(
-                f"[Agent1] 재작성 {max_retries}회 후에도 표절 경고 잔류 — "
+                f"[{self.AGENT_LABEL}] 재작성 {max_retries}회 후에도 표절 경고 잔류 — "
                 f"AI 수정 채팅으로 직접 수정하거나 새로 생성해주세요"
             )
 
@@ -142,7 +155,7 @@ class ContentProducerAgent:
                 applied += 1
         if applied:
             article.word_count = len(article.text.split())
-            self._log(f"[Agent1] 교정 {applied}건 본문 반영 완료")
+            self._log(f"[{self.AGENT_LABEL}] 교정 {applied}건 본문 반영 완료")
 
         # ── Step 4 & 5: 크로스워드 + 워크북 (독립 실행) ──────────
         self._cancel_check()
@@ -151,7 +164,7 @@ class ContentProducerAgent:
         workbook_sets       = self._workbook.run(article, level)
 
         self._log(
-            f"[Agent1] 완료 — "
+            f"[{self.AGENT_LABEL}] 완료 — "
             f"기사 {article.word_count}단어 / "
             f"표절 {'통과' if plagiarism_report.passed else '경고'} / "
             f"수정제안 {len(editing_suggestions)}건 / "
@@ -179,9 +192,25 @@ class ContentProducerAgent:
 
     # ------------------------------------------------------------------
 
+    def _load_guidelines(self) -> str:
+        """지침 마크다운을 읽어 반환한다. HTML 주석을 제거한 본문이 비면 빈 문자열.
+
+        규칙은 ORCHESTRATION.md 3절 참조 — 본문 전체가 Writer 프롬프트에 주입된다.
+        """
+        if not self.GUIDELINE_FILE:
+            return ""
+        path = GUIDELINES_DIR / self.GUIDELINE_FILE
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as e:
+            self._log(f"[{self.AGENT_LABEL}] 지침 파일 로드 실패 (기본 프롬프트 사용): {e}")
+            return ""
+        body = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL).strip()
+        return body
+
     def _scrape_article(self, url: str) -> str:
         """URL에서 기사 본문을 추출한다."""
-        self._log(f"[Agent1] 링크 스크래핑 시작: {url[:80]}")
+        self._log(f"[{self.AGENT_LABEL}] 링크 스크래핑 시작: {url[:80]}")
         try:
             resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
             soup = BeautifulSoup(resp.text, "lxml")
@@ -197,10 +226,10 @@ class ContentProducerAgent:
                 if len(p.get_text(strip=True)) > 40
             ]
             content = "\n\n".join(paragraphs[:30])
-            self._log(f"[Agent1] 스크래핑 완료 — {len(content)}자")
+            self._log(f"[{self.AGENT_LABEL}] 스크래핑 완료 — {len(content)}자")
             return content[:3000]  # 토큰 절약을 위해 최대 3000자
         except Exception as e:
-            self._log(f"[Agent1] 스크래핑 실패 (무시하고 계속): {e}")
+            self._log(f"[{self.AGENT_LABEL}] 스크래핑 실패 (무시하고 계속): {e}")
             return ""
 
     def _get_reference_format(self) -> str:
@@ -217,8 +246,8 @@ class ContentProducerAgent:
             # 기사 본문처럼 보이는 텍스트 추출 (p 태그)
             texts = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 40]
             self._reference_format_cache = "\n".join(texts[:15])
-            self._log(f"[Agent1] NE Times 포맷 참고 로드 완료 ({len(texts)}개 단락)")
+            self._log(f"[{self.AGENT_LABEL}] NE Times 포맷 참고 로드 완료 ({len(texts)}개 단락)")
         except Exception as e:
-            self._log(f"[Agent1] NE Times 포맷 로드 실패 (무시하고 계속): {e}")
+            self._log(f"[{self.AGENT_LABEL}] NE Times 포맷 로드 실패 (무시하고 계속): {e}")
             self._reference_format_cache = ""
         return self._reference_format_cache

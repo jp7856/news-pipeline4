@@ -67,6 +67,14 @@ LEVEL_CONFIG: dict[str, dict] = {
         "word_count_range": "280–380",
         "paragraph_count":  "6–7",
     },
+    # ⚠️ placeholder — junior 복사본. 에이전트 1-5 지침 입고 시 사양 확정 필요
+    "junior_m": {
+        "newspaper":        "NE Times Junior M",
+        "cefr":             "A2 / A2-B1",
+        "target":           "high elementary and low middle school students (ages 11–14)",
+        "word_count_range": "200–280",
+        "paragraph_count":  "5–6",
+    },
 }
 
 # ------------------------------------------------------------------
