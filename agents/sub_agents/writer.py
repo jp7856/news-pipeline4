@@ -18,10 +18,6 @@ from agents.sub_agents.utils import parse_json
 
 logger = logging.getLogger(__name__)
 
-# NE Times 포맷 참고 URL
-NETIMES_URL = "https://www.netimes.co.kr"
-
-
 class WriterAgent:
     def __init__(
         self,
@@ -36,7 +32,6 @@ class WriterAgent:
         topic: str,
         level: Level,
         section: Section,
-        reference_format: str = "",
         source_content: str = "",
         real_sources: list[dict] | None = None,
         guidelines: str = "",
@@ -46,7 +41,6 @@ class WriterAgent:
         topic : 기사 주제 또는 뉴스 URL
         level : 신문 레벨 (kinder/kids/junior/times/junior_m)
         section : 섹션 (과학/환경 등)
-        reference_format : netimes.co.kr에서 가져온 포맷 샘플 텍스트
         real_sources : SourceFinder가 검색한 실제 기사 [{"title","url","snippet"}]
         guidelines : 신문별 작성 지침 (agents/guidelines/*.md 본문 — 에이전트 1-X가 주입)
         sub_level : 매체 내부 서브레벨 (L1/L2/L3 — SUBLEVEL_CONFIG가 사양을 덮어씀)
@@ -55,11 +49,6 @@ class WriterAgent:
         self._log(f"[Writer] 기사 작성 시작 — [{level.value} {sub_level}] {topic[:50]}")
         real_sources = real_sources or []
 
-        format_hint = (
-            f"\n\nFormat reference from NE Times:\n{reference_format[:800]}"
-            if reference_format
-            else ""
-        )
         source_hint = (
             f"\n\nSource article (use as factual reference — do NOT copy directly):\n{source_content[:2000]}"
             if source_content
@@ -86,7 +75,7 @@ CEFR level: {cfg['cefr']}
 Target word count: {cfg['word_count_range']} words (Microsoft Word standard)
 Average sentence length: {cfg.get('sentence_length', 'appropriate to the level')}
 Paragraphs: {cfg['paragraph_count']} paragraphs of roughly equal size
-{format_hint}{self._guideline_hint(guidelines, cfg)}
+{self._guideline_hint(guidelines, cfg)}
 
 Instructions:
 1. Search your knowledge for accurate, up-to-date information on this topic.

@@ -29,8 +29,6 @@ from agents.sub_agents import (
 
 logger = logging.getLogger(__name__)
 
-NETIMES_SAMPLE_URL = "https://www.netimes.co.kr"
-
 GUIDELINES_DIR = Path(__file__).parent / "guidelines"
 
 
@@ -48,7 +46,6 @@ class ContentProducerAgent:
         self._cancel_check = cancel_check or (lambda: None)
         from agents.sub_agents.usage_tracker import TrackedClient
         self._client = TrackedClient(api_key=ANTHROPIC_API_KEY)
-        self._reference_format_cache: str = ""
         self._guidelines = self._load_guidelines()
 
         # 서브에이전트 초기화 (클라이언트 공유)
@@ -70,11 +67,11 @@ class ContentProducerAgent:
         if self._guidelines:
             self._log(f"[{self.AGENT_LABEL}] 작성 지침 적용 ({self.GUIDELINE_FILE}, {len(self._guidelines)}자)")
 
-        # NE Times 포맷 참고 (캐시 활용)
-        reference = self._get_reference_format()
-
-        # 링크가 있으면 원문 스크래핑
+        # 링크가 있으면 원문 스크래핑 (http(s) URL일 때만 — 토픽이 잘못 들어오는 경우 방지)
         source_content = ""
+        if source_url and not source_url.lower().startswith("http"):
+            self._log(f"[{self.AGENT_LABEL}] 링크 입력이 URL이 아니라 무시: {source_url[:60]}")
+            source_url = ""
         if source_url:
             source_content = self._scrape_article(source_url)
 
@@ -89,7 +86,6 @@ class ContentProducerAgent:
         # ── Step 1: 기사 작성 ─────────────────────────────────────
         article = self._writer.run(
             topic, level, section,
-            reference_format=reference,
             source_content=source_content,
             real_sources=real_sources,
             guidelines=self._guidelines,
@@ -127,7 +123,6 @@ class ContentProducerAgent:
             )
             article = self._writer.run(
                 revised_topic, level, section,
-                reference_format=reference,
                 source_content=source_content,
                 real_sources=real_sources,
                 guidelines=self._guidelines,
@@ -235,22 +230,3 @@ class ContentProducerAgent:
             self._log(f"[{self.AGENT_LABEL}] 스크래핑 실패 (무시하고 계속): {e}")
             return ""
 
-    def _get_reference_format(self) -> str:
-        """netimes.co.kr에서 샘플 기사 텍스트를 가져온다 (세션 중 1회 캐시)."""
-        if self._reference_format_cache:
-            return self._reference_format_cache
-        try:
-            resp = requests.get(
-                NETIMES_SAMPLE_URL,
-                timeout=8,
-                headers={"User-Agent": "Mozilla/5.0"},
-            )
-            soup = BeautifulSoup(resp.text, "lxml")
-            # 기사 본문처럼 보이는 텍스트 추출 (p 태그)
-            texts = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 40]
-            self._reference_format_cache = "\n".join(texts[:15])
-            self._log(f"[{self.AGENT_LABEL}] NE Times 포맷 참고 로드 완료 ({len(texts)}개 단락)")
-        except Exception as e:
-            self._log(f"[{self.AGENT_LABEL}] NE Times 포맷 로드 실패 (무시하고 계속): {e}")
-            self._reference_format_cache = ""
-        return self._reference_format_cache
