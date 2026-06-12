@@ -153,12 +153,11 @@
   <main>
     <div class="form-row">
       <input type="text" id="topic" placeholder="Enter topic (e.g. Climate change and young activists)">
-      <select id="level" onchange="rebuildSubLevels()">
+      <select id="level">
         {% for lv in levels %}
-        <option value="{{lv.value}}" {% if lv.value == 'junior' %}selected{% endif %}>{{lv.label}} · {{lv.cefr}}</option>
+        <option value="{{lv.value}}" {% if lv.value == 'junior' %}selected{% endif %}>{{lv.label}}</option>
         {% endfor %}
       </select>
-      <select id="sub-level" title="매체 내부 서브레벨 (실측 CEFR 분석 기준)"></select>
       <select id="section">
         {% for sc in sections %}
         <option value="{{sc.value}}">{{sc.label}}</option>
@@ -249,7 +248,7 @@
     const SUBLEVELS = {{ sublevels | tojson }};
     const DEFAULT_SUBLEVEL = {{ default_sublevel | tojson }};
 
-    // 서브레벨 + CEFR 배지 — 서브레벨이 있으면 그 CEFR, 없으면 매체 대표 CEFR
+    // 레벨 + CEFR 배지 — 기사 생성 시 워드카운트 옆에 노출 (서브레벨이 있으면 그 CEFR)
     function cefrStat(level, subLevel) {
       const sub = (SUBLEVELS[level] || []).find(s => s.key === subLevel);
       if (sub) {
@@ -258,16 +257,6 @@
       const full = LEVEL_CEFR[level] || "";
       if (!full) return "";
       return `<span class="stat" style="background:#1e3a5f;color:#93c5fd" title="${full}">CEFR ${full.split(" (")[0]}</span>`;
-    }
-
-    // 레벨 변경 시 해당 매체의 서브레벨 옵션 재구성 (예: KINDER는 L1~L2만)
-    function rebuildSubLevels() {
-      const level = document.getElementById("level").value;
-      const sel = document.getElementById("sub-level");
-      const prev = sel.value || DEFAULT_SUBLEVEL;
-      sel.innerHTML = (SUBLEVELS[level] || []).map(s =>
-        `<option value="${s.key}">${s.key} · ${s.cefr} (${s.words}단어)</option>`).join("");
-      sel.value = [...sel.options].some(o => o.value === prev) ? prev : DEFAULT_SUBLEVEL;
     }
     const logBox = document.getElementById("log-box");
     const badge = document.getElementById("status-badge");
@@ -492,7 +481,6 @@
         body: JSON.stringify({
           topic,
           level: document.getElementById("level").value,
-          sub_level: document.getElementById("sub-level").value || DEFAULT_SUBLEVEL,
           section: document.getElementById("section").value,
           sid: _mySid,
           source_url: document.getElementById("source-url").value.trim(),
@@ -802,9 +790,6 @@
       document.getElementById("lightbox").classList.remove("open");
     }
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeHistory(); } });
-
-    // 초기 서브레벨 옵션 구성
-    rebuildSubLevels();
 
     // ── History ───────────────────────────────────────────────────
     async function openHistory() {
