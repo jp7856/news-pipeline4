@@ -146,6 +146,9 @@ class ContentPackage:
     crossword_sentences: list[CrosswordSentencePair]
     workbook_sets: list[WorkbookSet]       # 반드시 2세트
 
+    # 매체 내부 서브레벨 (L1/L2/L3)
+    sub_level: str = "L2"
+
     # Agent 3: 이미지
     image_url: str = ""
 

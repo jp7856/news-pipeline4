@@ -59,13 +59,14 @@ class ContentProducerAgent:
         self._workbook  = WorkbookAgent(self._client, log_callback=self._log)
 
     def produce_article(
-        self, topic: str, level: Level, section: Section, source_url: str = ""
+        self, topic: str, level: Level, section: Section, source_url: str = "",
+        sub_level: str = "L2",
     ):
         """Phase 1 — 기사 작성 + 표절 검사까지만 수행한다.
 
         Returns: (article, plagiarism_report)
         """
-        self._log(f"[{self.AGENT_LABEL}] 콘텐츠 제작 시작 — [{level.value}/{section.value}] {topic[:60]}")
+        self._log(f"[{self.AGENT_LABEL}] 콘텐츠 제작 시작 — [{level.value} {sub_level}/{section.value}] {topic[:60]}")
         if self._guidelines:
             self._log(f"[{self.AGENT_LABEL}] 작성 지침 적용 ({self.GUIDELINE_FILE}, {len(self._guidelines)}자)")
 
@@ -92,6 +93,7 @@ class ContentProducerAgent:
             source_content=source_content,
             real_sources=real_sources,
             guidelines=self._guidelines,
+            sub_level=sub_level,
         )
 
         # 사용자가 직접 넣은 링크도 출처에 포함
@@ -129,6 +131,7 @@ class ContentProducerAgent:
                 source_content=source_content,
                 real_sources=real_sources,
                 guidelines=self._guidelines,
+                sub_level=sub_level,
             )
             plagiarism_report = self._plagcheck.run(article)
 

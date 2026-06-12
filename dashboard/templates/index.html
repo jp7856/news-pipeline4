@@ -153,11 +153,12 @@
   <main>
     <div class="form-row">
       <input type="text" id="topic" placeholder="Enter topic (e.g. Climate change and young activists)">
-      <select id="level">
+      <select id="level" onchange="rebuildSubLevels()">
         {% for lv in levels %}
         <option value="{{lv.value}}" {% if lv.value == 'junior' %}selected{% endif %}>{{lv.label}} · {{lv.cefr}}</option>
         {% endfor %}
       </select>
+      <select id="sub-level" title="매체 내부 서브레벨 (실측 CEFR 분석 기준)"></select>
       <select id="section">
         {% for sc in sections %}
         <option value="{{sc.value}}">{{sc.label}}</option>
@@ -245,11 +246,28 @@
   <script>
     const socket = io();
     const LEVEL_CEFR = {{ level_cefr | tojson }};
-    // 레벨의 CEFR 배지 — 짧은 표기 + 마우스 오버 시 매체 범위 전체
-    function cefrStat(level) {
+    const SUBLEVELS = {{ sublevels | tojson }};
+    const DEFAULT_SUBLEVEL = {{ default_sublevel | tojson }};
+
+    // 서브레벨 + CEFR 배지 — 서브레벨이 있으면 그 CEFR, 없으면 매체 대표 CEFR
+    function cefrStat(level, subLevel) {
+      const sub = (SUBLEVELS[level] || []).find(s => s.key === subLevel);
+      if (sub) {
+        return `<span class="stat" style="background:#1e3a5f;color:#93c5fd" title="${sub.words} words · ${LEVEL_CEFR[level] || ""}">${subLevel} · CEFR ${sub.cefr}</span>`;
+      }
       const full = LEVEL_CEFR[level] || "";
       if (!full) return "";
       return `<span class="stat" style="background:#1e3a5f;color:#93c5fd" title="${full}">CEFR ${full.split(" (")[0]}</span>`;
+    }
+
+    // 레벨 변경 시 해당 매체의 서브레벨 옵션 재구성 (예: KINDER는 L1~L2만)
+    function rebuildSubLevels() {
+      const level = document.getElementById("level").value;
+      const sel = document.getElementById("sub-level");
+      const prev = sel.value || DEFAULT_SUBLEVEL;
+      sel.innerHTML = (SUBLEVELS[level] || []).map(s =>
+        `<option value="${s.key}">${s.key} · ${s.cefr} (${s.words}단어)</option>`).join("");
+      sel.value = [...sel.options].some(o => o.value === prev) ? prev : DEFAULT_SUBLEVEL;
     }
     const logBox = document.getElementById("log-box");
     const badge = document.getElementById("status-badge");
@@ -309,11 +327,11 @@
     });
 
     // Phase 1 완료 — 기사 미리보기 + 계속 버튼 표시 (AI 수정 후에도 호출됨)
-    socket.on("article_ready", ({article, plagiarism_passed, level, section}) => {
+    socket.on("article_ready", ({article, plagiarism_passed, level, section, sub_level}) => {
       _clientRunning = false;
       setRunning(false);
       setReviseBusy(false);
-      renderArticleOnly(article, plagiarism_passed, level, section);
+      renderArticleOnly(article, plagiarism_passed, level, section, sub_level);
       document.getElementById("continue-bar").classList.add("show");
     });
 
@@ -364,12 +382,12 @@
     });
 
     // 답변 수신 — 말풍선 표시 + 기사가 바뀌었으면 미리보기 갱신
-    socket.on("revise_done", ({reply, changed, article, plagiarism_passed, level, section}) => {
+    socket.on("revise_done", ({reply, changed, article, plagiarism_passed, level, section, sub_level}) => {
       setReviseBusy(false);
       setRunning(false);
       addChatBubble("a", reply, changed);
       if (changed) {
-        renderArticleOnly(article, plagiarism_passed, level, section);
+        renderArticleOnly(article, plagiarism_passed, level, section, sub_level);
       }
     });
 
@@ -426,7 +444,7 @@
       document.getElementById("continue-bar").classList.remove("show");
     }
 
-    function renderArticleOnly(article, plagiarismPassed, level, section) {
+    function renderArticleOnly(article, plagiarismPassed, level, section, subLevel) {
       document.getElementById("result-area").classList.remove("hidden");
       // Article 탭만 채우고 활성화
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -440,7 +458,7 @@
           <span class="stat">${level.toUpperCase().replace('_',' ')}</span>
           <span class="stat">${section}</span>
           <span class="stat">${article.word_count} words</span>
-          ${cefrStat(level)}
+          ${cefrStat(level, subLevel)}
           <span class="stat ${plagiarismPassed ? 'pass' : 'fail'}">${plagiarismPassed ? 'PLAGIARISM PASS' : 'PLAGIARISM WARNING'}</span>
         </div>
         <div class="article-text">${esc(article.text)}</div>
@@ -474,6 +492,7 @@
         body: JSON.stringify({
           topic,
           level: document.getElementById("level").value,
+          sub_level: document.getElementById("sub-level").value || DEFAULT_SUBLEVEL,
           section: document.getElementById("section").value,
           sid: _mySid,
           source_url: document.getElementById("source-url").value.trim(),
@@ -503,7 +522,7 @@
           <span class="stat">${r.level.toUpperCase().replace('_',' ')}</span>
           <span class="stat">${r.section}</span>
           <span class="stat">${r.article.word_count} words</span>
-          ${cefrStat(r.level)}
+          ${cefrStat(r.level, r.sub_level)}
         </div>
         <div class="article-text">${esc(r.article.text)}</div>
         <h2 style="margin-top:20px">Vocabulary</h2>
@@ -784,6 +803,9 @@
     }
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeHistory(); } });
 
+    // 초기 서브레벨 옵션 구성
+    rebuildSubLevels();
+
     // ── History ───────────────────────────────────────────────────
     async function openHistory() {
       const res = await fetch("/api/history");
@@ -794,7 +816,7 @@
       } else {
         el.innerHTML = [...list].reverse().map(h => `
           <div class="history-item" onclick="loadHistory(${h.idx})">
-            <span class="hi-badge" title="${LEVEL_CEFR[h.level] || ''}">${h.level.toUpperCase().replace('_',' ')}</span>
+            <span class="hi-badge" title="${LEVEL_CEFR[h.level] || ''}">${h.level.toUpperCase().replace('_',' ')}${h.result && h.result.sub_level ? ' ' + h.result.sub_level : ''}</span>
             <span class="hi-badge" style="background:#1e3a5f;color:#93c5fd">${h.section}</span>
             <span class="hi-topic">${esc(h.topic)}</span>
             <span class="hi-meta">${h.cost_krw ? h.cost_krw.toLocaleString() + "원 · " : ""}${h.created_at}</span>

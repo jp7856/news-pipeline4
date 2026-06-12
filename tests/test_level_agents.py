@@ -65,4 +65,27 @@ hint = WriterAgent._guideline_hint("제목은 의문문", cfg)
 assert "NE Times Junior" in hint and "제목은 의문문" in hint
 print("prompt injection OK")
 
+# 6) 서브레벨 사양 — 구성 완전성 + Writer 병합·폴백
+from config import SUBLEVEL_CONFIG
+
+for lv in Level:
+    subs = SUBLEVEL_CONFIG[lv.value]
+    assert "L1" in subs and "L2" in subs, f"{lv.value} 서브레벨 누락"
+    for spec in subs.values():
+        assert {"cefr", "word_count_range", "sentence_length", "paragraph_count"} <= set(spec)
+assert "L3" not in SUBLEVEL_CONFIG["kinder"], "KINDER는 L1~L2만"
+
+cfg, sub = WriterAgent._merge_config(Level.KIDS, "L3")
+assert sub == "L3" and cfg["cefr"] == "A2+" and cfg["word_count_range"] == "130–165"
+assert cfg["newspaper"] == "NE Times Kids"  # 베이스 값 유지
+cfg, sub = WriterAgent._merge_config(Level.KINDER, "L3")  # 없는 서브레벨 → L2 폴백
+assert sub == "L2" and cfg["cefr"] == "A1"
+print("sublevel config & merge OK")
+
+# 7) 시트 컬럼 — 서브레벨 컬럼 추가 후에도 상태·비용 위치 불변
+from agents.worksheet import SHEET_COLUMNS, STATUS_COL, COST_COL
+assert len(SHEET_COLUMNS) == 18 and SHEET_COLUMNS[17] == "서브레벨"
+assert STATUS_COL == 16 and COST_COL == 17
+print("sheet columns OK")
+
 print("ALL TESTS PASSED")

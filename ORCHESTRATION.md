@@ -72,9 +72,12 @@
 ## 3. 지침 마크다운 작성 규칙
 
 > **수치 기준**: 2026-06 실제 NE Times 4개 매체 발행 기사의 CEFR 분석.
-> 각 매체는 내부 L1~L3 서브레벨이 있으며 **생성 기본 타깃은 중간인 L2**입니다.
-> 매체 경계는 연속적(KIDS L3 ≈ JUNIOR L1, JUNIOR L3 ≈ TIMES L1)이므로
-> 각 지침은 자기 매체의 중앙을 노립니다. JUNIOR M은 분석 미포함 — placeholder.
+> 각 매체의 내부 서브레벨(L1~L3, KINDER는 L1~L2)은 `config.py SUBLEVEL_CONFIG`에
+> 정의되어 있고, **대시보드에서 선택**합니다 (기본 L2). 선택된 서브레벨의
+> 단어 수·문장 길이·CEFR이 LEVEL_CONFIG 위에 덮어써져 Writer 프롬프트에 들어가며,
+> 지침 파일에는 수치가 아닌 **문체 규칙**만 둡니다.
+> 매체 경계는 연속적(KIDS L3 ≈ JUNIOR L1, JUNIOR L3 ≈ TIMES L1).
+> JUNIOR M은 분석 미포함 — placeholder. 서브레벨은 시트 18번째 컬럼(R열)에 기록됩니다.
 
 - 위치: `agents/guidelines/agent1_X_<level>.md` (위 표 참조)
 - **HTML 주석(`<!-- -->`)을 제외한 파일 본문 전체가 Writer 프롬프트에

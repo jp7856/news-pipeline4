@@ -80,6 +80,41 @@ LEVEL_CONFIG: dict[str, dict] = {
 }
 
 # ------------------------------------------------------------------
+# 매체 내부 서브레벨 (L1~L3) — 2026-06 실측 CEFR 분석 그대로.
+# 평균값 기준 ±15% 정도로 단어 수 범위를 잡음. 생성 시 기본값은 L2.
+# 선택된 서브레벨 값이 LEVEL_CONFIG 위에 덮어써져 Writer 프롬프트에 들어간다.
+# ------------------------------------------------------------------
+DEFAULT_SUBLEVEL = "L2"
+
+SUBLEVEL_CONFIG: dict[str, dict[str, dict]] = {
+    "kinder": {  # KINDER는 L1~L2만 존재
+        "L1": {"cefr": "Pre-A1", "word_count_range": "40–55",   "sentence_length": "about 5 words",  "paragraph_count": "2"},
+        "L2": {"cefr": "A1",     "word_count_range": "60–85",   "sentence_length": "about 6 words",  "paragraph_count": "2–3"},
+    },
+    "kids": {
+        "L1": {"cefr": "A1+",    "word_count_range": "55–75",   "sentence_length": "about 8 words",  "paragraph_count": "2–3"},
+        "L2": {"cefr": "A2",     "word_count_range": "90–115",  "sentence_length": "about 9 words",  "paragraph_count": "3–4"},
+        "L3": {"cefr": "A2+",    "word_count_range": "130–165", "sentence_length": "about 9 words",  "paragraph_count": "4–5"},
+    },
+    "junior": {
+        "L1": {"cefr": "A2+",      "word_count_range": "95–125",  "sentence_length": "about 12 words", "paragraph_count": "3–4"},
+        "L2": {"cefr": "early B1", "word_count_range": "155–190", "sentence_length": "about 13–14 words", "paragraph_count": "4–5"},
+        "L3": {"cefr": "B1",       "word_count_range": "180–220", "sentence_length": "about 12–13 words", "paragraph_count": "4–5"},
+    },
+    "times": {
+        "L1": {"cefr": "B1",  "word_count_range": "105–135", "sentence_length": "about 15 words", "paragraph_count": "3–4"},
+        "L2": {"cefr": "B1+", "word_count_range": "240–290", "sentence_length": "about 16 words", "paragraph_count": "5–6"},
+        "L3": {"cefr": "B2",  "word_count_range": "280–340", "sentence_length": "about 15 words", "paragraph_count": "6–7"},
+    },
+    # ⚠️ placeholder — junior 복사본 (실측 분석 미포함)
+    "junior_m": {
+        "L1": {"cefr": "A2+",      "word_count_range": "95–125",  "sentence_length": "about 12 words", "paragraph_count": "3–4"},
+        "L2": {"cefr": "early B1", "word_count_range": "155–190", "sentence_length": "about 13–14 words", "paragraph_count": "4–5"},
+        "L3": {"cefr": "B1",       "word_count_range": "180–220", "sentence_length": "about 12–13 words", "paragraph_count": "4–5"},
+    },
+}
+
+# ------------------------------------------------------------------
 # Google Sheets 컬럼 순서
 # ------------------------------------------------------------------
 SHEET_COLUMNS = [

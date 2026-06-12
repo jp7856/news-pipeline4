@@ -22,7 +22,7 @@ SHEET_COLUMNS = [
     "생성일시", "레벨", "섹션", "토픽", "단어수",
     "기사(영문)", "기사(한국어)", "요약(한국어)",
     "어휘", "출처", "표절검사", "이미지URL",
-    "크로스워드", "워크북Set1", "워크북Set2", "상태", "비용(원)",
+    "크로스워드", "워크북Set1", "워크북Set2", "상태", "비용(원)", "서브레벨",
 ]
 
 STATUS_COL = SHEET_COLUMNS.index("상태") + 1     # 상태 컬럼 위치 (1-based)
@@ -123,6 +123,7 @@ class WorksheetAgent:
                     "topic": row[3],
                     "level": row[1],
                     "section": row[2],
+                    "sub_level": row[17] if len(row) > 17 else "",  # 구버전 행은 미기록
                     "article": {
                         "text": row[5],
                         "text_ko": row[6],
@@ -217,6 +218,7 @@ class WorksheetAgent:
             wb2,
             self._status_label(pkg),
             cost_krw if cost_krw is not None else "",
+            pkg.sub_level,
         ]
 
     @staticmethod

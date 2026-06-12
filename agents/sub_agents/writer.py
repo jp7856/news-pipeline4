@@ -5,7 +5,14 @@ from typing import Callable
 
 import anthropic
 
-from config import ANTHROPIC_API_KEY, CLAUDE_MODEL, SYSTEM_PROMPT, LEVEL_CONFIG
+from config import (
+    ANTHROPIC_API_KEY,
+    CLAUDE_MODEL,
+    SYSTEM_PROMPT,
+    LEVEL_CONFIG,
+    SUBLEVEL_CONFIG,
+    DEFAULT_SUBLEVEL,
+)
 from models import ArticleResult, Level, Section
 from agents.sub_agents.utils import parse_json
 
@@ -33,6 +40,7 @@ class WriterAgent:
         source_content: str = "",
         real_sources: list[dict] | None = None,
         guidelines: str = "",
+        sub_level: str = DEFAULT_SUBLEVEL,
     ) -> ArticleResult:
         """
         topic : 기사 주제 또는 뉴스 URL
@@ -41,9 +49,10 @@ class WriterAgent:
         reference_format : netimes.co.kr에서 가져온 포맷 샘플 텍스트
         real_sources : SourceFinder가 검색한 실제 기사 [{"title","url","snippet"}]
         guidelines : 신문별 작성 지침 (agents/guidelines/*.md 본문 — 에이전트 1-X가 주입)
+        sub_level : 매체 내부 서브레벨 (L1/L2/L3 — SUBLEVEL_CONFIG가 사양을 덮어씀)
         """
-        self._log(f"[Writer] 기사 작성 시작 — [{level.value}] {topic[:50]}")
-        cfg = LEVEL_CONFIG[level.value]
+        cfg, sub_level = self._merge_config(level, sub_level)
+        self._log(f"[Writer] 기사 작성 시작 — [{level.value} {sub_level}] {topic[:50]}")
         real_sources = real_sources or []
 
         format_hint = (
@@ -72,8 +81,10 @@ class WriterAgent:
 Topic: {topic}
 Section: {section.value}
 Target readers: {cfg['target']}
+Sub-level within this newspaper: {sub_level}
 CEFR level: {cfg['cefr']}
 Target word count: {cfg['word_count_range']} words (Microsoft Word standard)
+Average sentence length: {cfg.get('sentence_length', 'appropriate to the level')}
 Paragraphs: {cfg['paragraph_count']} paragraphs of roughly equal size
 {format_hint}{self._guideline_hint(guidelines, cfg)}
 
@@ -116,6 +127,18 @@ CRITICAL JSON RULES:
             f"어휘 {len(result.vocabulary)}개 / 출처 {len(result.sources)}개"
         )
         return result
+
+    @staticmethod
+    def _merge_config(level: Level, sub_level: str) -> tuple[dict, str]:
+        """LEVEL_CONFIG 위에 서브레벨 사양을 덮어 최종 cfg를 만든다.
+
+        해당 매체에 없는 서브레벨(예: kinder L3)이면 DEFAULT_SUBLEVEL로 폴백.
+        """
+        base = LEVEL_CONFIG[level.value]
+        subs = SUBLEVEL_CONFIG.get(level.value, {})
+        if sub_level not in subs:
+            sub_level = DEFAULT_SUBLEVEL
+        return {**base, **subs.get(sub_level, {})}, sub_level
 
     @staticmethod
     def _guideline_hint(guidelines: str, cfg: dict) -> str:

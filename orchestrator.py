@@ -53,6 +53,7 @@ class Orchestrator:
         level: Level,
         section: Section,
         source_url: str = "",
+        sub_level: str = "L2",
     ) -> dict:
         """기사 초안까지만 생성하고 상태를 반환한다. (이후 run_phase2로 완성)"""
         from agents.sub_agents.usage_tracker import reset_usage
@@ -62,7 +63,7 @@ class Orchestrator:
         self._start = datetime.now()
         self._log(f"=== Pipeline Start (run_id: {run_id}) ===")
         self._log(f"    Topic   : {topic}")
-        self._log(f"    Level   : {level.value}")
+        self._log(f"    Level   : {level.value} {sub_level}")
         self._log(f"    Section : {section.value}")
         self._log("")
 
@@ -71,7 +72,7 @@ class Orchestrator:
             level, log_callback=self._log, cancel_check=self._check_cancel
         )
         article, plagiarism_report = producer.produce_article(
-            topic, level, section, source_url=source_url
+            topic, level, section, source_url=source_url, sub_level=sub_level
         )
         self._log("[Phase1] 기사 초안 완료 — 검토 후 '이후 작업 진행'을 눌러주세요")
 
@@ -79,6 +80,7 @@ class Orchestrator:
             "topic": topic,
             "level": level,
             "section": section,
+            "sub_level": sub_level,
             "article": article,
             "plagiarism_report": plagiarism_report,
             "producer": producer,
@@ -98,6 +100,7 @@ class Orchestrator:
         package = producer.produce_extras(
             topic, level, section, state["article"], state["plagiarism_report"]
         )
+        package.sub_level = state.get("sub_level", "L2")
 
         # ── Agent 2: 한국어 번역 ──────────────────────────────────
         self._check_cancel()
@@ -211,8 +214,9 @@ class Orchestrator:
         level: Level,
         section: Section,
         source_url: str = "",
+        sub_level: str = "L2",
     ) -> tuple[ContentPackage, str]:
-        state = self.run_phase1(topic, level, section, source_url=source_url)
+        state = self.run_phase1(topic, level, section, source_url=source_url, sub_level=sub_level)
         return self.run_phase2(state)
 
 

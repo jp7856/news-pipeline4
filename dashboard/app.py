@@ -10,7 +10,7 @@ from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, join_room
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import LEVEL_CONFIG
+from config import LEVEL_CONFIG, SUBLEVEL_CONFIG, DEFAULT_SUBLEVEL
 from orchestrator import Orchestrator, PipelineCancelled
 from agents.worksheet import WorksheetAgent
 from models import ContentPackage, Level, Section
@@ -94,7 +94,19 @@ def index():
     sections = [{"value": sc.value, "label": sc.value} for sc in Section]
     # 레벨 → CEFR 전체 문자열 (미리보기·결과 배지용)
     level_cefr = {lv.value: LEVEL_CONFIG[lv.value]["cefr"] for lv in Level}
-    return render_template("index.html", levels=levels, sections=sections, level_cefr=level_cefr)
+    # 레벨 → 서브레벨 목록 (드롭다운·서브레벨별 CEFR 배지용)
+    sublevels = {
+        lv.value: [
+            {"key": key, "cefr": spec["cefr"], "words": spec["word_count_range"]}
+            for key, spec in SUBLEVEL_CONFIG[lv.value].items()
+        ]
+        for lv in Level
+    }
+    return render_template(
+        "index.html",
+        levels=levels, sections=sections,
+        level_cefr=level_cefr, sublevels=sublevels, default_sublevel=DEFAULT_SUBLEVEL,
+    )
 
 
 @app.route("/api/run", methods=["POST"])
@@ -105,6 +117,9 @@ def api_run():
     level_str = data.get("level", "junior")
     section_str = data.get("section", "환경")
     source_url = data.get("source_url", "").strip()
+    sub_level = data.get("sub_level", DEFAULT_SUBLEVEL)
+    if sub_level not in ("L1", "L2", "L3"):
+        sub_level = DEFAULT_SUBLEVEL
 
     if not topic and not source_url:
         return jsonify({"error": "Topic or source URL is required."}), 400
@@ -123,7 +138,7 @@ def api_run():
     _cancel_events[sid] = threading.Event()
     _pending.pop(sid, None)
     thread = threading.Thread(
-        target=_run_phase1, args=(sid, topic, level, section, source_url), daemon=True
+        target=_run_phase1, args=(sid, topic, level, section, source_url, sub_level), daemon=True
     )
     thread.start()
     return jsonify({"message": "Pipeline started"})
@@ -212,6 +227,7 @@ def _run_revise(sid: str, instruction: str):
             "plagiarism_passed": state["plagiarism_report"].passed,
             "level": state["level"].value,
             "section": state["section"].value,
+            "sub_level": state.get("sub_level", "L2"),
         }, to=sid)
     except Exception as e:
         socketio.emit("log", {"message": f"수정 오류: {e}"}, to=sid)
@@ -281,13 +297,13 @@ def _emit_log_for(sid: str):
     return emit_log
 
 
-def _run_phase1(sid: str, topic: str, level: Level, section: Section, source_url: str = ""):
+def _run_phase1(sid: str, topic: str, level: Level, section: Section, source_url: str = "", sub_level: str = "L2"):
     """Phase 1 — 기사 초안 생성 후 미리보기 전송, 사용자 확인 대기."""
     try:
         orchestrator = Orchestrator(
             log_callback=_emit_log_for(sid), cancel_event=_cancel_events.get(sid)
         )
-        state = orchestrator.run_phase1(topic, level, section, source_url=source_url)
+        state = orchestrator.run_phase1(topic, level, section, source_url=source_url, sub_level=sub_level)
         state["orchestrator"] = orchestrator
 
         _pending[sid] = state
@@ -303,6 +319,7 @@ def _run_phase1(sid: str, topic: str, level: Level, section: Section, source_url
             "topic": topic,
             "level": level.value,
             "section": section.value,
+            "sub_level": sub_level,
         }, to=sid)
     except PipelineCancelled:
         socketio.emit("log", {"message": "=== 사용자에 의해 중단됨 ==="}, to=sid)
@@ -352,6 +369,7 @@ def _serialize(pkg: ContentPackage, sheet_url: str = "") -> dict:
         "topic": pkg.topic,
         "level": pkg.level.value,
         "section": pkg.section.value,
+        "sub_level": pkg.sub_level,
         "article": {
             "text": pkg.article.text,
             "text_ko": pkg.article.text_ko,
