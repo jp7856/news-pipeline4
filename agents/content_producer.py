@@ -197,11 +197,14 @@ class ContentProducerAgent:
             article.word_count = len(article.text.split())
             self._log(f"[{self.AGENT_LABEL}] 교정 {applied}건 본문 반영 완료")
 
-        # ── Step 4 & 5: 크로스워드 + 워크북 (독립 실행) ──────────
+        # ── Step 4 & 5: 크로스워드 + 워크북 (병렬 실행 — 서로 독립적) ──
         self._cancel_check()
-        crossword_sentences = self._crossword.run(article)
-        self._cancel_check()
-        workbook_sets       = self._workbook.run(article, level)
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_cw = executor.submit(self._crossword.run, article)
+            future_wb = executor.submit(self._workbook.run, article, level)
+            crossword_sentences = future_cw.result()
+            workbook_sets       = future_wb.result()
 
         self._log(
             f"[{self.AGENT_LABEL}] 완료 — "

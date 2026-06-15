@@ -5,6 +5,7 @@ load_dotenv(override=True)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = "claude-sonnet-4-6"
+CLAUDE_MODEL_FAST = "claude-haiku-4-5-20251001"  # 단순 판정용 (표절·사실검사)
 
 GOOGLE_SHEETS_CREDENTIALS_JSON = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON", "credentials.json")
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
