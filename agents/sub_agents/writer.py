@@ -64,8 +64,9 @@ class WriterAgent:
                 for s in real_sources
             )
             real_source_hint = (
-                f"\n\nRecent real news references on this topic (for factual grounding — "
-                f"every specific claim in your article must be consistent with these):\n{lines}"
+                f"\n\nRecent real news references — for factual grounding ONLY.\n"
+                f"IMPORTANT: Use these to verify facts, NOT as a writing template.\n"
+                f"NEVER copy or closely paraphrase their wording — write entirely in your own original words:\n{lines}"
             )
 
         prompt = f"""You are writing an article for {cfg['newspaper']}.
@@ -87,19 +88,24 @@ Instructions:
    metaphor or allegory (e.g. topic "mirror" → write about mirrors, NOT about
    political events described as "a mirror of society"). If the topic is in Korean,
    interpret it literally and write about that exact subject in English.
-2. FACTS ONLY: every statement must be factually accurate. Never invent or
+   Draw freely from your broad knowledge to write informatively — do not rely
+   solely on the provided source references.
+2. ORIGINAL WRITING: Write entirely in your own original words. Never copy or
+   closely paraphrase any source text — this will fail the plagiarism check.
+   Sources are fact-checkers only; your sentences and phrasing must be your own.
+3. FACTS ONLY: every statement must be factually accurate. Never invent or
    exaggerate facts, numbers, dates, names, quotes, or events. If a detail is
    uncertain, leave it out — an article based on false information is forbidden.
-3. EDUCATIONAL NEUTRALITY: this is an educational newspaper for students.
+4. EDUCATIONAL NEUTRALITY: this is an educational newspaper for students.
    Stay politically neutral and balanced — never take sides on partisan issues.
    No sensational, violent, sexual, or fear-mongering content or framing.
-4. Write an article suitable for the readers' age and comprehension level.
-5. Include relevant vocabulary naturally in the text.
-6. Add one or two points that spark curiosity or deeper interest.
-7. Include background explanations where needed for younger readers.
-8. Write in a tone and style appropriate to {cfg['newspaper']}.
-9. At the end, list 3–5 key vocabulary words from the article.
-10. Do NOT invent or include any URLs — sources are managed separately.
+5. Write an article suitable for the readers' age and comprehension level.
+6. Include relevant vocabulary naturally in the text.
+7. Add one or two points that spark curiosity or deeper interest.
+8. Include background explanations where needed for younger readers.
+9. Write in a tone and style appropriate to {cfg['newspaper']}.
+10. At the end, list 3–5 key vocabulary words from the article.
+11. Do NOT invent or include any URLs — sources are managed separately.
 
 Respond in this exact JSON format:
 {{
