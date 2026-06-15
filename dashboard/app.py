@@ -411,6 +411,7 @@ def _serialize(pkg: ContentPackage, sheet_url: str = "") -> dict:
             for w in pkg.workbook_sets
         ],
         "image_url": pkg.image_url,
+        "image_candidates": pkg.image_candidates,
         "sheet_url": sheet_url,
         "review": {
             "passed": review.passed,

@@ -1,4 +1,4 @@
-"""ImageFinder 변별력 검증 — 기존 이미지 제외·후보 중 선택."""
+"""ImageFinder 변별력 검증 — 기존 이미지 제외·후보 중 선택·후보 목록 수집."""
 
 import sys
 from pathlib import Path
@@ -10,6 +10,10 @@ from types import SimpleNamespace as NS
 from agents.image_finder import ImageFinderAgent
 
 BASE = "https://images.unsplash.com/photo-{n}"
+
+
+def make_cand(url):
+    return {"url": url, "thumb_url": url, "photographer": "Test", "page_url": ""}
 
 
 def make_agent(candidates_by_query, ai_queries=None):
@@ -26,6 +30,7 @@ def make_pkg():
         topic="선거",
         section=NS(name="POLITICS"),
         image_url="",
+        image_candidates=[],
     )
 
 
@@ -36,12 +41,13 @@ assert ImageFinderAgent._normalize(a) == ImageFinderAgent._normalize(b)
 print("normalize OK")
 
 # 2) 제외 목록에 있는 이미지는 선택하지 않음
-cands = [BASE.format(n=i) + "?w=1080" for i in range(1, 6)]
+cands = [make_cand(BASE.format(n=i) + "?w=1080") for i in range(1, 6)]
 agent = make_agent({"election vote": cands})
 pkg = make_pkg()
 used = [BASE.format(n=1) + "?w=400", BASE.format(n=2) + "?q=80"]  # 1,2번 사용됨
 for _ in range(20):  # 무작위 선택이므로 반복 확인
     pkg.image_url = ""
+    pkg.image_candidates = []
     agent.run(pkg, exclude_urls=used)
     assert pkg.image_url, "이미지를 못 찾음"
     assert ImageFinderAgent._normalize(pkg.image_url) not in {
@@ -51,8 +57,8 @@ print("exclusion OK")
 
 # 3) 첫 검색어 후보가 전부 중복이면 다음 검색어로 폴백
 agent = make_agent({
-    "election vote": [BASE.format(n=1)],
-    "election": [BASE.format(n=9)],
+    "election vote": [make_cand(BASE.format(n=1))],
+    "election": [make_cand(BASE.format(n=9))],
 })
 pkg = make_pkg()
 agent.run(pkg, exclude_urls=[BASE.format(n=1)])
@@ -71,7 +77,7 @@ print("diversity OK")
 
 # 5) AI 생성 검색어가 어휘 폴백보다 우선 시도됨 (관련성 우선)
 agent = make_agent(
-    {"people voting booth": [BASE.format(n=7)], "election vote": [BASE.format(n=1)]},
+    {"people voting booth": [make_cand(BASE.format(n=7))], "election vote": [make_cand(BASE.format(n=1))]},
     ai_queries=["people voting booth"],
 )
 pkg = make_pkg()
@@ -79,10 +85,19 @@ agent.run(pkg)
 assert pkg.image_url.startswith(BASE.format(n=7)), pkg.image_url
 
 # AI 검색어 실패(빈 리스트) 시 어휘 폴백으로 진행
-agent = make_agent({"election vote": [BASE.format(n=1)]}, ai_queries=[])
+agent = make_agent({"election vote": [make_cand(BASE.format(n=1))]}, ai_queries=[])
 pkg = make_pkg()
 agent.run(pkg)
 assert pkg.image_url.startswith(BASE.format(n=1))
 print("ai query priority OK")
+
+# 6) 후보 목록이 image_candidates에 수집됨
+cands6 = [make_cand(BASE.format(n=i)) for i in range(1, 5)]
+agent = make_agent({"election vote": cands6})
+pkg = make_pkg()
+agent.run(pkg)
+assert len(pkg.image_candidates) == len(cands6), f"후보 수 불일치: {len(pkg.image_candidates)}"
+assert all("url" in c and "photographer" in c for c in pkg.image_candidates)
+print("candidates collected OK")
 
 print("ALL TESTS PASSED")

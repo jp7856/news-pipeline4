@@ -106,6 +106,16 @@
     .img-info p{font-size:.85rem;color:#94a3b8;word-break:break-all;margin-bottom:12px}
     .btn-search{background:#f59e0b;color:#0f172a;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:.9rem;font-weight:600;text-decoration:none;display:inline-block}
     .btn-search:hover{background:#fbbf24}
+    /* Image V2 — license box & thumbnail candidates */
+    .img-license-box{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px 16px;font-size:.8rem;color:#94a3b8;margin-top:12px}
+    .img-license-box>div{margin-bottom:3px}
+    .img-license-title{font-weight:600;color:#e2e8f0;margin-bottom:8px!important}
+    .img-candidates{margin-top:18px}
+    .img-cands-title{font-size:.85rem;color:#94a3b8;font-weight:600;margin-bottom:8px}
+    .img-thumbs{display:flex;gap:8px;flex-wrap:wrap}
+    .img-thumb{width:96px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid #334155;transition:border-color .2s,box-shadow .2s;opacity:.8}
+    .img-thumb:hover{border-color:#60a5fa;opacity:1}
+    .img-thumb.selected{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.35);opacity:1}
 
     /* History modal */
     #history-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;align-items:flex-start;justify-content:center;padding-top:60px}
@@ -672,6 +682,8 @@
     let _imazinePopup = null;
     let _currentImageUrl = "";
     let _currentArticleText = "";
+    let _v2Candidates = [];
+    let _v2SelectedIdx = -1;
 
     function _imagePreviewHtml(imgUrl, wrapId, badgeId, urlId) {
       const imgHtml = imgUrl
@@ -704,9 +716,57 @@
 
     function renderImageV2(r) {
       _currentImageUrl = r.image_url || "";
+      _v2Candidates = r.image_candidates || [];
+      // 자동선택된 이미지를 후보 목록에서 찾아 선택 표시
+      _v2SelectedIdx = _v2Candidates.findIndex(
+        c => c.url.split("?")[0] === _currentImageUrl.split("?")[0]
+      );
+      _renderV2Panel();
+    }
+
+    function _renderV2Panel() {
+      const cands = _v2Candidates;
+      const idx = _v2SelectedIdx;
+      const sel = idx >= 0 ? cands[idx] : null;
+      const imgUrl = _currentImageUrl;
+      const today = new Date().toISOString().slice(0, 10);
+
+      const imgHtml = imgUrl
+        ? `<img src="${esc(imgUrl)}" alt="article image" onclick="openLightbox(this.src)">`
+        : `<div class="img-no-image">이미지 없음</div>`;
+
+      const badgeTxt = imgUrl ? (idx >= 0 ? "자동선택" : "선택됨") : "없음";
+
+      const licenseHtml = sel ? `
+        <div class="img-license-box">
+          <div class="img-license-title">라이선스 증빙</div>
+          ${sel.query ? `<div>검색어: ${esc(sel.query)}</div>` : ""}
+          ${sel.photographer ? `<div>촬영: ${esc(sel.photographer)} · 출처: Unsplash</div>` : ""}
+          <div>라이선스: Unsplash License (commercial OK, attribution appreciated)</div>
+          <div>확인일: ${today}${sel.page_url ? ` · <a href="${esc(sel.page_url)}" target="_blank" class="source-link">원본 페이지</a>` : ""}</div>
+        </div>` : "";
+
+      const thumbsHtml = cands.length > 0 ? `
+        <div class="img-candidates">
+          <div class="img-cands-title">후보 ${cands.length}건</div>
+          <div class="img-thumbs">
+            ${cands.map((c, i) => `<img class="img-thumb${i === idx ? " selected" : ""}"
+              src="${esc(c.thumb_url || c.url)}" title="${esc(c.photographer || "")}"
+              onclick="v2SelectCandidate(${i})">`).join("")}
+          </div>
+        </div>` : "";
+
       document.getElementById("panel-image-v2").innerHTML = `
-        <h2>이미지 V2 — Unsplash 직접 검색</h2>
-        ${_imagePreviewHtml(_currentImageUrl, "img-wrap-v2", "img-badge-v2", "img-url-v2")}
+        <h2>이미지 V2 — UNSPLASH 자동 추천 + 직접 검색</h2>
+        <div class="img-panel">
+          <div class="img-preview" id="img-wrap-v2">${imgHtml}</div>
+          <div class="img-info">
+            <p id="img-url-v2">${imgUrl ? esc(imgUrl) : "이미지를 찾지 못했습니다."}</p>
+            <span class="stat" id="img-badge-v2" style="display:inline-block;margin-bottom:12px">${badgeTxt}</span>
+            ${licenseHtml}
+          </div>
+        </div>
+        ${thumbsHtml}
         <div style="margin-top:16px">
           <a class="btn-search" href="https://jp7856.github.io/ne-times-image-finder/" target="imazine-popup"
              style="background:#3b82f6"
@@ -715,6 +775,13 @@
             이미지를 클릭하면 바로 파이프라인에 반영됩니다.
           </p>
         </div>`;
+    }
+
+    function v2SelectCandidate(idx) {
+      _v2SelectedIdx = idx;
+      _currentImageUrl = _v2Candidates[idx].url;
+      _renderV2Panel();
+      _applyImage("img-wrap-v1", "img-badge-v1", "img-url-v1");
     }
 
     function openImageSite(e, url) {
@@ -766,7 +833,11 @@
       if (event.data.imageUrl) {
         _currentImageUrl = event.data.imageUrl;
         _applyImage("img-wrap-v1", "img-badge-v1", "img-url-v1");
-        _applyImage("img-wrap-v2", "img-badge-v2", "img-url-v2");
+        // V2: 후보 목록에서 매칭 여부 확인 후 패널 전체 재렌더
+        _v2SelectedIdx = _v2Candidates.findIndex(
+          c => c.url.split("?")[0] === _currentImageUrl.split("?")[0]
+        );
+        if (document.getElementById("panel-image-v2")) _renderV2Panel();
         if (_imazinePopup && !_imazinePopup.closed) _imazinePopup.close();
       }
     });

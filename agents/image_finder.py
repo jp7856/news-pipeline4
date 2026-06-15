@@ -25,6 +25,7 @@ UNSPLASH_URL = "https://api.unsplash.com/search/photos"
 # 검색당 받아올 후보 수 / 무작위 선택 풀 크기 (관련성 우선 — 풀을 좁게 유지)
 CANDIDATES_PER_QUERY = 10
 PICK_POOL_SIZE = 3
+CANDIDATES_DISPLAY_MAX = 8  # UI에 표시할 후보 최대 수
 
 
 class ImageFinderAgent:
@@ -40,27 +41,45 @@ class ImageFinderAgent:
         if exclude:
             self._log(f"[Agent3] 기존 기사 이미지 {len(exclude)}건 제외 목록 적용")
 
+        all_candidates: list[dict] = []
+        seen_norms: set[str] = set()
+
         for query in self._build_queries(package):
             self._log(f"[Agent3] 검색어: {query}")
             try:
-                candidates = self._search_images(query)
+                raw = self._search_images(query)
             except Exception as e:
                 self._log(f"[Agent3] 이미지 탐색 오류: {e}")
                 break
 
-            fresh = [u for u in candidates if self._normalize(u) not in exclude]
-            if fresh:
+            fresh = [c for c in raw if self._normalize(c["url"]) not in exclude]
+
+            # 고유 신규 후보를 표시용 목록에 추가
+            for c in fresh:
+                norm = self._normalize(c["url"])
+                if norm not in seen_norms:
+                    seen_norms.add(norm)
+                    all_candidates.append({**c, "query": query})
+
+            if fresh and not package.image_url:
                 # 첫 결과 고정 대신 상위 후보 중 무작위 — 매체별 변별력 확보
-                package.image_url = random.choice(fresh[:PICK_POOL_SIZE])
+                chosen = random.choice(fresh[:PICK_POOL_SIZE])
+                package.image_url = chosen["url"]
                 self._log(
-                    f"[Agent3] 이미지 발견 (후보 {len(candidates)}건, 중복 제외 {len(fresh)}건 중 선택): "
+                    f"[Agent3] 이미지 발견 (후보 {len(raw)}건, 중복 제외 {len(fresh)}건 중 선택): "
                     f"{package.image_url[:80]}..."
                 )
+            elif raw and not fresh:
+                self._log(f"[Agent3] 후보 {len(raw)}건 모두 기존 기사와 중복 — 다음 검색어로")
+
+            # 충분한 후보를 모았고 자동선택도 완료됐으면 추가 검색 불필요
+            if len(all_candidates) >= CANDIDATES_DISPLAY_MAX and package.image_url:
                 break
-            if candidates:
-                self._log(f"[Agent3] 후보 {len(candidates)}건 모두 기존 기사와 중복 — 다음 검색어로")
-        else:
+
+        if not package.image_url:
             self._log("[Agent3] 이미지를 찾지 못했습니다.")
+
+        package.image_candidates = all_candidates[:CANDIDATES_DISPLAY_MAX]
         self._log("[Agent3] 이미지 탐색 완료")
         return package
 
@@ -120,8 +139,8 @@ Output ONLY a JSON array: ["query one", "query two", "query three"]"""
             self._log(f"[Agent3] AI 검색어 생성 실패 (어휘 폴백 사용): {e}")
             return []
 
-    def _search_images(self, query: str) -> list[str]:
-        """검색 결과 이미지 URL 후보 목록을 반환한다."""
+    def _search_images(self, query: str) -> list[dict]:
+        """검색 결과 이미지 후보 목록을 반환한다 (URL + 메타데이터)."""
         if not UNSPLASH_ACCESS_KEY:
             return []
         resp = requests.get(
@@ -132,4 +151,15 @@ Output ONLY a JSON array: ["query one", "query two", "query three"]"""
         )
         resp.raise_for_status()
         results = resp.json().get("results", [])
-        return [r["urls"]["regular"] for r in results if r.get("urls", {}).get("regular")]
+        out = []
+        for r in results:
+            url = r.get("urls", {}).get("regular", "")
+            if not url:
+                continue
+            out.append({
+                "url": url,
+                "thumb_url": r.get("urls", {}).get("small", url),
+                "photographer": r.get("user", {}).get("name", ""),
+                "page_url": r.get("links", {}).get("html", ""),
+            })
+        return out

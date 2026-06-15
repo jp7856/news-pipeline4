@@ -152,6 +152,9 @@ class ContentPackage:
     # Agent 3: 이미지
     image_url: str = ""
 
+    # Agent 3: 이미지 후보 목록 (UI 표시용)
+    image_candidates: list = field(default_factory=list)  # [{"url","thumb_url","photographer","page_url","query"}]
+
     # Agent 5: 검수 결과
     review_result: Optional["ReviewResult"] = None
 
