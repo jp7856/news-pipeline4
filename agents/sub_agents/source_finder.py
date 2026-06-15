@@ -26,9 +26,8 @@ ALLOWED_DOMAINS = [
     "timeforkids.com", "dogonews.com", "kidsnews.com.au",
     "newsforkids.net", "teachingkidsnews.com", "youngzine.org",
     "snexplores.org", "kids.nationalgeographic.com",
-    # 접근 가능한 일반 뉴스·교육 사이트
-    "time.com", "npr.org", "smithsonianmag.com",
-    "nasa.gov", "nationalgeographic.com",
+    # 접근 가능한 교육·과학·문화 사이트 (time.com/npr.org 제외 — 정치 시사 기사 혼입)
+    "smithsonianmag.com", "nasa.gov", "nationalgeographic.com",
     "livescience.com", "earth.com", "mentalfloss.com",
 ]
 
