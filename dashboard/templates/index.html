@@ -156,8 +156,9 @@
   <header>
     <h1>NE Times Content Pipeline</h1>
     <span class="badge" id="status-badge">Ready</span>
-    <span class="badge" id="usage-badge" style="margin-left:auto;background:#1e3a5f;color:#93c5fd;cursor:default"
-          title="시트 비용 컬럼에 기록된 기사별 비용의 합계 (구버전 행은 비용 미기록)"></span>
+    <span class="badge" id="usage-badge" style="margin-left:auto;background:#1e3a5f;color:#93c5fd;cursor:pointer"
+          title="이번 달 API 사용액 — 클릭하면 월별 그래프 표시"
+          onclick="openUsageChart()"></span>
   </header>
 
   <main>
@@ -245,6 +246,19 @@
     </div>
   </div>
 
+  <!-- Usage chart modal -->
+  <div id="usage-modal" onclick="if(event.target===this)closeUsageChart()"
+       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:910;align-items:center;justify-content:center">
+    <div style="background:#1e293b;border-radius:14px;width:580px;max-width:96vw;padding:24px;border:1px solid #334155">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h3 style="font-size:.95rem;font-weight:600">월별 API 사용액</h3>
+        <button onclick="closeUsageChart()" style="background:none;border:none;color:#94a3b8;font-size:1.4rem;cursor:pointer;padding:0">&times;</button>
+      </div>
+      <div id="usage-chart" style="display:flex;align-items:flex-end;gap:6px;padding:0 4px 8px;min-height:160px"></div>
+      <p id="usage-chart-total" style="font-size:.8rem;color:#64748b;margin-top:12px;text-align:right"></p>
+    </div>
+  </div>
+
   <!-- Lightbox -->
   <div id="lightbox" onclick="closeLightbox()">
     <span id="lightbox-close">&times;</span>
@@ -315,16 +329,42 @@
       refreshUsage();
     });
 
-    // ── 누적 사용액 ──────────────────────────────────────────────
+    // ── 월별 사용액 ──────────────────────────────────────────────
+    let _usageData = null;
     async function refreshUsage() {
       try {
         const res = await fetch("/api/usage");
-        const u = await res.json();
+        _usageData = await res.json();
         document.getElementById("usage-badge").textContent =
-          `💰 누적 약 ${u.total_krw.toLocaleString()}원 · ${u.count}건`;
+          `💰 이번달 약 ${_usageData.current_month_krw.toLocaleString()}원 · ${_usageData.current_month_count}건`;
       } catch (e) { /* 시트 미연결 등 — 표시만 생략 */ }
     }
     refreshUsage();
+
+    function openUsageChart() {
+      if (!_usageData || !_usageData.monthly || _usageData.monthly.length === 0) return;
+      const months = _usageData.monthly;
+      const maxKrw = Math.max(...months.map(m => m.krw), 1);
+      const BAR_MAX_H = 140;
+      document.getElementById("usage-chart").innerHTML = months.map(m => {
+        const h = Math.max(Math.round(m.krw / maxKrw * BAR_MAX_H), 4);
+        const cur = m.month === _usageData.current_month;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:36px">
+          <span style="font-size:.68rem;color:#94a3b8">${m.krw.toLocaleString()}</span>
+          <div style="width:100%;background:${cur ? '#3b82f6' : '#334155'};border-radius:4px 4px 0 0;height:${h}px"></div>
+          <span style="font-size:.72rem;color:${cur ? '#93c5fd' : '#64748b'};font-weight:${cur ? 700 : 400}">${m.month.slice(5)}월</span>
+          <span style="font-size:.68rem;color:#475569">${m.count}건</span>
+        </div>`;
+      }).join("");
+      document.getElementById("usage-chart-total").textContent =
+        `전체 누적 ${_usageData.total_krw.toLocaleString()}원 · ${_usageData.count}건`;
+      const modal = document.getElementById("usage-modal");
+      modal.style.display = "flex";
+    }
+
+    function closeUsageChart() {
+      document.getElementById("usage-modal").style.display = "none";
+    }
 
     socket.on("pipeline_error", ({error}) => {
       _clientRunning = false;
@@ -671,40 +711,21 @@
 
     async function publishArticle() {
       if (!_currentSheetRow) return;
-      if (!confirm("이 기사를 https://jp7856.github.io/ne-times-site2/ 에 발행할까요?")) return;
+      if (!confirm("이 기사를 발행할까요?\n발행 후 https://jp7856.github.io/ne-times-site2/ 에서 확인할 수 있습니다.")) return;
       const btn = document.getElementById("btn-publish");
       btn.disabled = true;
       btn.textContent = "발행 중...";
 
-      // ne-times-site2 articles.json에 올릴 기사 데이터
-      const article_data = _currentResult ? {
-        created_at: new Date().toLocaleString("ko-KR", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(/\. /g,"-").replace(".",":").replace("오전 ","").replace("오후 ",""),
-        topic: _currentResult.topic || "",
-        level: _currentResult.level || "",
-        section: _currentResult.section || "",
-        image_url: _currentResult.image_url || "",
-        article: {
-          text: _currentResult.article?.text || "",
-          text_ko: _currentResult.article?.text_ko || "",
-          summary_ko: _currentResult.article?.summary_ko || "",
-          word_count: _currentResult.article?.word_count || 0,
-          vocabulary: _currentResult.article?.vocabulary || [],
-        },
-      } : null;
-
       const resp = await fetch("/api/publish", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({sheet_row: _currentSheetRow, article_data}),
+        body: JSON.stringify({sheet_row: _currentSheetRow}),
       });
       const respData = await resp.json();
       if (resp.ok) {
         btn.textContent = "✅ 발행완료";
         btn.style.background = "#334155";
         btn.style.color = "#4ade80";
-        if (respData.site2_warning) {
-          alert("시트 발행은 완료됐으나 사이트 업로드 실패:\n" + respData.site2_warning + "\n\nGITHUB_TOKEN을 Railway에 설정했는지 확인하세요.");
-        }
       } else {
         alert("발행 실패: " + respData.error);
         btn.disabled = false;
@@ -899,7 +920,7 @@
     function closeLightbox() {
       document.getElementById("lightbox").classList.remove("open");
     }
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeHistory(); } });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeLightbox(); closeHistory(); closeUsageChart(); } });
 
     // ── History ───────────────────────────────────────────────────
     async function openHistory() {
