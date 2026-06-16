@@ -21,14 +21,18 @@ logger = logging.getLogger(__name__)
 # 출처로 허용할 교육용 뉴스 + 접근 가능한 신뢰 사이트
 # (BBC/Reuters/Guardian/NYT/AP는 Anthropic 크롤러를 차단해 사용 불가)
 # sciencedaily.com 제외 — 연구 논문 보도자료만 모아두는 사이트라 교육용 기사 아님
+# kids.nationalgeographic.com 제거 — nationalgeographic.com이 상위 도메인 포함
+#   → 중복 등록 시 NatGeo에 이중 가중치 발생, 다양성 저해
 ALLOWED_DOMAINS = [
-    # 어린이/학생 교육용 뉴스
+    # 어린이/학생 전용 교육 뉴스
     "timeforkids.com", "dogonews.com", "kidsnews.com.au",
     "newsforkids.net", "teachingkidsnews.com", "youngzine.org",
-    "snexplores.org", "kids.nationalgeographic.com",
-    # 접근 가능한 교육·과학·문화 사이트 (time.com/npr.org 제외 — 정치 시사 기사 혼입)
+    "snexplores.org", "sciencenewsforstudents.org",
+    # 과학·기술·문화 (정치 시사 혼입 최소 — time.com/npr.org 제외)
     "smithsonianmag.com", "nasa.gov", "nationalgeographic.com",
     "livescience.com", "earth.com", "mentalfloss.com",
+    "space.com", "discovermagazine.com", "popularmechanics.com",
+    "wired.com", "worldwildlife.org",
 ]
 
 
@@ -68,6 +72,9 @@ def search_real_sources(
                     f"Recency matters: prefer articles from the last 12 months, the newer "
                     f"the better. Avoid clearly outdated articles unless the topic is "
                     f"historical.\n\n"
+                    f"Source diversity is important: pick articles from DIFFERENT domains "
+                    f"whenever possible — do NOT use the same domain more than once in "
+                    f"your final list.\n\n"
                     f"After searching, output ONLY a JSON array of the {max_results} best "
                     f"articles you found, newest first, using the exact URLs from your "
                     f"search results:\n"
