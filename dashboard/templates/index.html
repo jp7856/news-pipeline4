@@ -646,6 +646,7 @@
 
       // 발행 버튼
       _currentSheetRow = r.sheet_row || null;
+      _currentResult = r;
       const btnPublish = document.getElementById("btn-publish");
       if (_currentSheetRow) {
         btnPublish.classList.remove("hidden");
@@ -666,25 +667,46 @@
     }
 
     let _currentSheetRow = null;
+    let _currentResult = null;
 
     async function publishArticle() {
       if (!_currentSheetRow) return;
-      if (!confirm("이 기사를 발행할까요? 구글 시트에 발행완료로 기록됩니다.")) return;
+      if (!confirm("이 기사를 https://jp7856.github.io/ne-times-site2/ 에 발행할까요?")) return;
       const btn = document.getElementById("btn-publish");
       btn.disabled = true;
       btn.textContent = "발행 중...";
+
+      // ne-times-site2 articles.json에 올릴 기사 데이터
+      const article_data = _currentResult ? {
+        created_at: new Date().toLocaleString("ko-KR", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(/\. /g,"-").replace(".",":").replace("오전 ","").replace("오후 ",""),
+        topic: _currentResult.topic || "",
+        level: _currentResult.level || "",
+        section: _currentResult.section || "",
+        image_url: _currentResult.image_url || "",
+        article: {
+          text: _currentResult.article?.text || "",
+          text_ko: _currentResult.article?.text_ko || "",
+          summary_ko: _currentResult.article?.summary_ko || "",
+          word_count: _currentResult.article?.word_count || 0,
+          vocabulary: _currentResult.article?.vocabulary || [],
+        },
+      } : null;
+
       const resp = await fetch("/api/publish", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({sheet_row: _currentSheetRow}),
+        body: JSON.stringify({sheet_row: _currentSheetRow, article_data}),
       });
+      const respData = await resp.json();
       if (resp.ok) {
         btn.textContent = "✅ 발행완료";
         btn.style.background = "#334155";
         btn.style.color = "#4ade80";
+        if (respData.site2_warning) {
+          alert("시트 발행은 완료됐으나 사이트 업로드 실패:\n" + respData.site2_warning + "\n\nGITHUB_TOKEN을 Railway에 설정했는지 확인하세요.");
+        }
       } else {
-        const data = await resp.json();
-        alert("발행 실패: " + data.error);
+        alert("발행 실패: " + respData.error);
         btn.disabled = false;
         btn.textContent = "📢 발행하기";
       }

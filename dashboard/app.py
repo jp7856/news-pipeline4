@@ -3,9 +3,13 @@
 import sys
 import threading
 import logging
+import os
+import json
+import base64
 from datetime import datetime
 from pathlib import Path
 
+import requests as http_requests
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, join_room
 
@@ -245,6 +249,57 @@ def _run_revise(sid: str, instruction: str):
         _running.pop(sid, None)
 
 
+_SITE2_REPO = "jp7856/ne-times-site2"
+_SITE2_FILE = "articles.json"
+
+
+def _push_to_site2(article_entry: dict) -> str | None:
+    """articles.json에 기사를 prepend하고 ne-times-site2에 커밋한다.
+
+    Returns: None(성공) or 에러 메시지 문자열
+    GITHUB_TOKEN 미설정 시 조용히 건너뛴다.
+    """
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        logger.warning("[Site2] GITHUB_TOKEN 미설정 — ne-times-site2 업로드 생략")
+        return None
+
+    api_url = f"https://api.github.com/repos/{_SITE2_REPO}/contents/{_SITE2_FILE}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+    try:
+        # 1. 현재 articles.json 읽기
+        r = http_requests.get(api_url, headers=headers, timeout=10)
+        r.raise_for_status()
+        file_meta = r.json()
+        sha = file_meta["sha"]
+        current_articles = json.loads(base64.b64decode(file_meta["content"]))
+        if not isinstance(current_articles, list):
+            current_articles = []
+
+        # 2. 새 기사를 맨 앞에 추가 (최신순)
+        current_articles.insert(0, article_entry)
+
+        # 3. 커밋
+        new_content = base64.b64encode(
+            json.dumps(current_articles, ensure_ascii=False, indent=2).encode()
+        ).decode()
+        topic_short = article_entry.get("topic", "")[:60]
+        resp = http_requests.put(api_url, headers=headers, timeout=15, json={
+            "message": f"publish: {topic_short}",
+            "content": new_content,
+            "sha": sha,
+        })
+        resp.raise_for_status()
+        logger.info(f"[Site2] 업로드 완료: {topic_short}")
+        return None
+    except Exception as e:
+        logger.error(f"[Site2] 업로드 실패: {e}")
+        return str(e)
+
+
 @app.route("/api/publish", methods=["POST"])
 def api_publish():
     data = request.json or {}
@@ -253,13 +308,23 @@ def api_publish():
         return jsonify({"error": "sheet_row is required."}), 400
 
     ws = WorksheetAgent()
-    if ws.mark_published(int(sheet_row)):
-        # 히스토리에도 발행 상태 반영
-        for entry in _history:
-            if entry.get("result", {}).get("sheet_row") == sheet_row:
-                entry["result"]["published"] = True
-        return jsonify({"message": "Published"})
-    return jsonify({"error": "발행 처리에 실패했습니다. 시트 연결을 확인하세요."}), 500
+    if not ws.mark_published(int(sheet_row)):
+        return jsonify({"error": "발행 처리에 실패했습니다. 시트 연결을 확인하세요."}), 500
+
+    # 히스토리에도 발행 상태 반영
+    for entry in _history:
+        if entry.get("result", {}).get("sheet_row") == sheet_row:
+            entry["result"]["published"] = True
+
+    # ne-times-site2에 기사 업로드
+    article_data = data.get("article_data")
+    if article_data:
+        site2_err = _push_to_site2(article_data)
+        if site2_err:
+            # 시트 발행은 성공했으므로 경고만 반환
+            return jsonify({"message": "Published", "site2_warning": site2_err})
+
+    return jsonify({"message": "Published"})
 
 
 @app.route("/api/published")
