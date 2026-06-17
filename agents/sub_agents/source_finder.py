@@ -18,21 +18,22 @@ from config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 
 logger = logging.getLogger(__name__)
 
-# 출처로 허용할 교육용 뉴스 + 접근 가능한 신뢰 사이트
-# (BBC/Reuters/Guardian/NYT/AP는 Anthropic 크롤러를 차단해 사용 불가)
+# 출처로 허용할 교육용 뉴스 + 교육 신뢰도 최상위 사이트
+# (BBC/Reuters/Guardian/NYT/AP는 Anthropic 크롤러를 차단해 사용 불가 — 넣으면 400)
+# wired.com / popularmechanics.com 제거 — Anthropic 크롤러 차단(400)
 # sciencedaily.com 제외 — 연구 논문 보도자료만 모아두는 사이트라 교육용 기사 아님
-# kids.nationalgeographic.com 제거 — nationalgeographic.com이 상위 도메인 포함
-#   → 중복 등록 시 NatGeo에 이중 가중치 발생, 다양성 저해
+# mentalfloss.com 제외 — 트리비아·엔터테인먼트 리스티클 중심, 교육용 부적합
+# sciencenewsforstudents.org 제외 — snexplores.org로 리다이렉트되는 구 도메인(중복)
+# livescience/earth/space/discovermagazine/worldwildlife 제외 — 일반 독자 대상,
+#   교육 신뢰도 검증 범위를 NASA·NatGeo·Smithsonian로 좁힘
+# kids.nationalgeographic.com 제거 — nationalgeographic.com이 상위 도메인 포함(중복)
 ALLOWED_DOMAINS = [
     # 어린이/학생 전용 교육 뉴스
     "timeforkids.com", "dogonews.com", "kidsnews.com.au",
     "newsforkids.net", "teachingkidsnews.com", "youngzine.org",
-    "snexplores.org", "sciencenewsforstudents.org",
-    # 과학·기술·문화 (정치 시사 혼입 최소 — time.com/npr.org 제외)
-    "smithsonianmag.com", "nasa.gov", "nationalgeographic.com",
-    "livescience.com", "earth.com", "mentalfloss.com",
-    "space.com", "discovermagazine.com",
-    "worldwildlife.org",
+    "snexplores.org",
+    # 교육 신뢰도 최상위 (과학·문화·역사)
+    "nasa.gov", "nationalgeographic.com", "smithsonianmag.com",
 ]
 
 
