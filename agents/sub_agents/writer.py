@@ -104,13 +104,16 @@ Instructions:
 7. Add one or two points that spark curiosity or deeper interest.
 8. Include background explanations where needed for younger readers.
 9. Write in a tone and style appropriate to {cfg['newspaper']}.
-10. At the end, list 3–5 key vocabulary words from the article.
+10. At the end, list 5–8 key vocabulary words from the article. For each word, include
+    its CEFR level and Korean meaning in this exact format: "word CEFR · Korean_meaning"
+    (e.g., "swimming A2 · 수영하다", "enormous B1 · 거대한, 어마어마한").
+    Use only standard CEFR levels: A1, A2, B1, B2, C1, C2.
 11. Do NOT invent or include any URLs — sources are managed separately.
 
 Respond in this exact JSON format:
 {{
   "article": "<full article text with paragraphs separated by \\n\\n>",
-  "vocabulary": ["word1", "word2", "word3", "word4", "word5"]
+  "vocabulary": ["swimming A2 · 수영하다", "enormous B1 · 거대한", "word3 A1 · 뜻3"]
 }}
 
 CRITICAL JSON RULES:

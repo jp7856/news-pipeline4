@@ -1,6 +1,7 @@
 """CrosswordAgent — 기사 어휘별로 B1/B1-B2 두 수준의 크로스워드 문장 쌍을 생성한다."""
 
 import logging
+import re
 from typing import Callable
 
 import anthropic
@@ -28,8 +29,12 @@ class CrosswordAgent:
             self._log("[Crossword] 어휘 없음 — 건너뜀")
             return []
 
+        def _en_word(entry: str) -> str:
+            m = re.match(r'^(.+?)\s+[A-Z]\d', entry)
+            return m.group(1).strip() if m else entry
+
         vocab_list = "\n".join(
-            f"{i+1}. {word}" for i, word in enumerate(article.vocabulary)
+            f"{i+1}. {_en_word(word)}" for i, word in enumerate(article.vocabulary)
         )
 
         prompt = f"""For each vocabulary word below, write TWO crossword puzzle sentences.

@@ -287,6 +287,22 @@
       if (!full) return "";
       return `<span class="stat" style="background:#1e3a5f;color:#93c5fd" title="${full}">CEFR ${full.split(" (")[0]}</span>`;
     }
+    // vocabulary 파싱: "word CEFR · Korean" → {word, level, ko}
+    // 구형 단어만 있는 형식도 graceful 처리
+    function parseVocab(raw) {
+      const m = String(raw).match(/^(.+?)\s+([A-Z]\d[\w+]*)\s*[·•\-]\s*(.+)$/u);
+      if (m) return {word: m[1].trim(), level: m[2], ko: m[3].trim()};
+      return {word: raw, level: "", ko: ""};
+    }
+    function vocabPillHtml(vocabList) {
+      return vocabList.map(w => {
+        const v = parseVocab(w);
+        if (v.level) {
+          return `<span class="vocab-tag"><b style="color:#e2e8f0">${esc(v.word)}</b><span style="color:#60a5fa;margin:0 5px;font-size:.72rem">${esc(v.level)}</span><span style="color:#94a3b8">· ${esc(v.ko)}</span></span>`;
+        }
+        return `<span class="vocab-tag">${esc(w)}</span>`;
+      }).join("");
+    }
     const logBox = document.getElementById("log-box");
     const badge = document.getElementById("status-badge");
     const btnRun = document.getElementById("btn-run");
@@ -547,8 +563,8 @@
           <span class="stat ${plagiarismPassed ? 'pass' : 'fail'}">${plagiarismPassed ? 'PLAGIARISM PASS' : 'PLAGIARISM WARNING'}</span>
         </div>
         <div class="article-text">${esc(article.text)}</div>
-        <h2 style="margin-top:20px">Vocabulary</h2>
-        <div>${article.vocabulary.map(w => `<span class="vocab-tag">${esc(w)}</span>`).join("")}</div>
+        <h2 style="margin-top:20px">Vocabulary <span class="stat" style="font-size:.72rem">${article.vocabulary.length} WORDS</span></h2>
+        <div>${vocabPillHtml(article.vocabulary)}</div>
         <h2 style="margin-top:16px">Sources</h2>
         ${article.sources.map(s => `<a class="source-link" href="${esc(s)}" target="_blank">${esc(s)}</a>`).join("")}
       `;
@@ -609,8 +625,8 @@
           ${cefrStat(r.level, r.sub_level)}
         </div>
         <div class="article-text">${esc(r.article.text)}</div>
-        <h2 style="margin-top:20px">Vocabulary</h2>
-        <div>${r.article.vocabulary.map(w => `<span class="vocab-tag">${esc(w)}</span>`).join("")}</div>
+        <h2 style="margin-top:20px">Vocabulary <span class="stat" style="font-size:.72rem">${r.article.vocabulary.length} WORDS</span></h2>
+        <div>${vocabPillHtml(r.article.vocabulary)}</div>
         <h2 style="margin-top:16px">Sources</h2>
         ${r.article.sources.map(s => `<a class="source-link" href="${esc(s)}" target="_blank">${esc(s)}</a>`).join("")}
       `;
