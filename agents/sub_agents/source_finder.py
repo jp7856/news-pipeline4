@@ -67,33 +67,44 @@ def search_real_sources(
             messages=[{
                 "role": "user",
                 "content": (
-                    f"Search the web for the MOST RECENT news articles about: {topic}"
-                    f"{f' (category: {section})' if section else ''}. "
-                    f"If the topic is not in English, translate it to English first "
-                    f"and search with the English query.\n\n"
-                    f"Recency matters: prefer articles from the last 12 months, the newer "
-                    f"the better. Avoid clearly outdated articles unless the topic is "
-                    f"historical.\n\n"
-                    f"Source diversity is important: pick articles from DIFFERENT domains "
-                    f"whenever possible — do NOT use the same domain more than once in "
-                    f"your final list.\n\n"
-                    f"After searching, output ONLY a JSON array of the {max_results} best "
-                    f"articles you found, newest first, using the exact URLs from your "
-                    f"search results:\n"
-                    f'[{{"title": "...", "url": "...", "snippet": "one-line summary", '
+                    f"You are finding source references for an educational news article "
+                    f"about: {topic}{f' (category: {section})' if section else ''}.\n\n"
+                    f"STEP 1 — Core keywords. If the topic is not in English, translate it "
+                    f"first. Extract the 2-4 ESSENTIAL keywords that define what the article "
+                    f"must be about.\n\n"
+                    f"STEP 2 — Search recent news on those keywords. Prefer the last 12 "
+                    f"months, newest first; avoid clearly outdated articles unless the topic "
+                    f"is historical.\n\n"
+                    f"STEP 3 — Read each candidate's core content and keep ONLY tight "
+                    f"matches: the article's MAIN subject must clearly cover the core "
+                    f"keywords, not just mention them in passing. Reject tangential or "
+                    f"loosely-related articles. It is BETTER to return FEWER strongly-matched "
+                    f"articles than to pad the list with weak matches. Pick from DIFFERENT "
+                    f"domains — do not repeat a domain.\n\n"
+                    f"Output ONLY a JSON array of up to {max_results} tightly-matched "
+                    f"articles, newest first, using the exact URLs from your search "
+                    f"results:\n"
+                    f'[{{"title": "...", "url": "...", '
+                    f'"snippet": "one-line summary of the article\'s core content", '
+                    f'"matched_keywords": ["kw1", "kw2"], "relevance": "high|medium", '
                     f'"date": "YYYY-MM or unknown"}}]\n'
-                    f"Output only the JSON array, no other text. "
-                    f"Only include URLs that appeared in your search results — never invent "
-                    f"URLs, and never invent dates (use \"unknown\" if not shown)."
+                    f"Only include articles whose relevance is high or medium AND that have "
+                    f"at least one matched keyword. Only use URLs that appeared in your "
+                    f"search results — never invent URLs or dates (use \"unknown\" if a date "
+                    f"is not shown). Output only the JSON array, no other text."
                 ),
             }],
         )
 
         sources = _parse_sources(message, max_results)
         dates = ", ".join(s.get("date") or "미상" for s in sources) if sources else ""
+        kws = sorted({
+            k for s in sources for k in (s.get("matched_keywords") or [])
+        })
         _log(
             f"[SourceFinder] 실제 출처 {len(sources)}건 검색 완료"
             + (f" (발행일: {dates})" if dates else "")
+            + (f" · 매칭 키워드: {', '.join(kws)}" if kws else "")
         )
         return sources
     except Exception as e:
@@ -147,9 +158,14 @@ def _parse_sources(message, max_results: int) -> list[dict]:
                     "url": it.get("url", ""),
                     "snippet": it.get("snippet", ""),
                     "date": it.get("date", "unknown"),
+                    "matched_keywords": it.get("matched_keywords", []),
+                    "relevance": (it.get("relevance") or "").lower(),
                 }
                 for it in items
                 if isinstance(it, dict) and it.get("url", "").startswith("http")
+                # 토픽 핵심 키워드와 실제로 매칭된 기사만 — 느슨하게 관련된 것 제외
+                and it.get("relevance", "high") != "low"
+                and (it.get("matched_keywords") or it.get("relevance") is None)
             ]
             if sources:
                 return _dedup_by_domain(sources, max_results)
