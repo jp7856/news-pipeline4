@@ -2,22 +2,14 @@
 에이전트 1-4 (TIMES) — NE Times 기사 작성 지침
 이 주석을 제외한 본문 전체가 Writer 프롬프트에 주입됩니다. (규칙: ORCHESTRATION.md 4절)
 근거: 2026-06 실제 발행 기사 CSV 분석 (1071호~, 산문 기사 67건, 각주 제외).
-수치는 평균이 아닌 실측 범위 — 기사는 반드시 범위 안에서 작성.
+수치 사양(단어 수·문장 길이·문단·CEFR)은 config.py가 단일 기준 — 이 파일엔 문체 규칙만 둔다 (드리프트 방지).
 실측 섹션: Nation / World / Briefs (L1), Headlines News / Key Issue / Lifestyle /
 Science / Sports & Entertainment / Read and Learn (L2), 심층 분석 기사 (L3)
 참고: L1에는 1단락 60–80단어 '단신(Briefs)'과 190–210단어 확장 기사 변형도 있으나
 생성 기본형은 110–150단어 일반 기사. 비산문 포맷(생성 대상 아님): Photo News, Debating
 -->
 
-NE Times — measured ranges from real published articles (write WITHIN these ranges, not to an average):
-
-| Sub-level | Words | Avg sentence length | Paragraphs | CEFR |
-|---|---|---|---|---|
-| L1 | 110–150 | 13–18 words | 3–5 | B1 |
-| L2 | 245–300 | 14–20 words | 5–8 | B1+ |
-| L3 | 255–300 | 15–19 words | 6–10 | B2 |
-
-The exact targets for the requested sub-level are given in the main prompt.
+NE Times — the word count, average sentence length, paragraph count, and CEFR for the assigned sub-level are provided in the main prompt (single source of truth: config). Write exactly within them. The rules below define this newspaper's writing style.
 
 Style rules for this newspaper (observed in real articles):
 - Full formal newspaper register; objective tone, no direct address to the reader

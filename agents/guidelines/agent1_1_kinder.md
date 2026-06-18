@@ -2,19 +2,12 @@
 에이전트 1-1 (KINDER) — NE Times Kinder 기사 작성 지침
 이 주석을 제외한 본문 전체가 Writer 프롬프트에 주입됩니다. (규칙: ORCHESTRATION.md 4절)
 근거: 2026-06 실제 발행 기사 CSV 분석 (243~247호, 산문 기사 22건, 각주 제외).
-수치는 평균이 아닌 실측 범위 — 기사는 반드시 범위 안에서 작성.
+수치 사양(단어 수·문장 길이·문단·CEFR)은 config.py가 단일 기준 — 이 파일엔 문체 규칙만 둔다 (드리프트 방지).
 실측 섹션: Weekly News / Science & Nature / My Diary (L1), People / Focus (L2)
 비산문 포맷(생성 대상 아님): Photo News, Speak Out(대화), Think About It
 -->
 
-NE Times Kinder — measured ranges from real published articles (write WITHIN these ranges, not to an average):
-
-| Sub-level | Words | Avg sentence length | Paragraphs | CEFR |
-|---|---|---|---|---|
-| L1 | 35–55 | 4–6 words | 4–5 | Pre-A1 |
-| L2 | 45–90 | 5–8 words | 4–6 | A1 |
-
-The exact targets for the requested sub-level are given in the main prompt.
+NE Times Kinder — the word count, average sentence length, paragraph count, and CEFR for the assigned sub-level are provided in the main prompt (single source of truth: config). Write exactly within them. The rules below define this newspaper's writing style.
 
 Style rules for this newspaper (observed in real articles):
 - A paragraph is only 1–2 very short sentences. Every sentence states one simple fact.

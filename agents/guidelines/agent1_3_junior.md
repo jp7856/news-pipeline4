@@ -2,21 +2,13 @@
 에이전트 1-3 (JUNIOR) — NE Times Junior 기사 작성 지침
 이 주석을 제외한 본문 전체가 Writer 프롬프트에 주입됩니다. (규칙: ORCHESTRATION.md 4절)
 근거: 2026-06 실제 발행 기사 CSV 분석 (126~130호, 산문 기사 35건, 각주 제외).
-수치는 평균이 아닌 실측 범위 — 기사는 반드시 범위 안에서 작성.
+수치 사양(단어 수·문장 길이·문단·CEFR)은 config.py가 단일 기준 — 이 파일엔 문체 규칙만 둔다 (드리프트 방지).
 실측 섹션: National/World News, Science, Lifestyle&Culture, Sports&Entertainment (L1·L2),
 Focus / People / World Tour (L3, 소제목 2개 구조)
 비산문 포맷(생성 대상 아님): Photo News, Did You Know, Debate, NE You(편지·대화)
 -->
 
-NE Times Junior — measured ranges from real published articles (write WITHIN these ranges, not to an average):
-
-| Sub-level | Words | Avg sentence length | Paragraphs | CEFR |
-|---|---|---|---|---|
-| L1 | 115–160 | 10–15 words | 4 | A2+ |
-| L2 | 150–190 | 11–17 words | 4–5 | early B1 |
-| L3 | 190–230 | 13–18 words | 6–7 (incl. 2 subheadings) | B1 |
-
-The exact targets for the requested sub-level are given in the main prompt.
+NE Times Junior — the word count, average sentence length, paragraph count, and CEFR for the assigned sub-level are provided in the main prompt (single source of truth: config). Write exactly within them. The rules below define this newspaper's writing style.
 
 Style rules for this newspaper (observed in real articles):
 - Standard news register, inverted pyramid: the first paragraph states what

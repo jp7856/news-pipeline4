@@ -2,21 +2,13 @@
 에이전트 1-2 (KIDS) — NE Times Kids 기사 작성 지침
 이 주석을 제외한 본문 전체가 Writer 프롬프트에 주입됩니다. (규칙: ORCHESTRATION.md 4절)
 근거: 2026-06 실제 발행 기사 CSV 분석 (790~794호, 산문 기사 31건, 각주 제외).
-수치는 평균이 아닌 실측 범위 — 기사는 반드시 범위 안에서 작성.
+수치 사양(단어 수·문장 길이·문단·CEFR)은 config.py가 단일 기준 — 이 파일엔 문체 규칙만 둔다 (드리프트 방지).
 실측 섹션: Our Nation / Around the World / Culture & Sports / Science & Nature (L1·L2),
 Close Up·People & Places(L2 기획, 145–175단어로 김), What's Hot (L3)
 비산문 포맷(생성 대상 아님): Photo News, Talk Talk(대화), Advice(편지), Debate
 -->
 
-NE Times Kids — measured ranges from real published articles (write WITHIN these ranges, not to an average):
-
-| Sub-level | Words | Avg sentence length | Paragraphs | CEFR |
-|---|---|---|---|---|
-| L1 | 55–70 | 7–10 words | 3–4 | A1+ |
-| L2 | 70–120 | 8–12 words | 4–5 | A2 |
-| L3 | 155–180 | 9–13 words | 9–11 (incl. 3 subheadings) | A2+ |
-
-The exact targets for the requested sub-level are given in the main prompt.
+NE Times Kids — the word count, average sentence length, paragraph count, and CEFR for the assigned sub-level are provided in the main prompt (single source of truth: config). Write exactly within them. The rules below define this newspaper's writing style.
 
 Style rules for this newspaper (observed in real articles):
 - A paragraph is 1–2 short sentences. Real news facts, simply told.
