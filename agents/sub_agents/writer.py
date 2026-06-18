@@ -81,7 +81,7 @@ CEFR level: {cfg['cefr']}
 Word count: {cfg['word_count_range']} words — the total MUST fall within this range (Microsoft Word standard)
 Average sentence length: {cfg.get('sentence_length', 'appropriate to the level')} — keep the article average within this range
 Paragraphs: {cfg['paragraph_count']} short paragraphs (1–3 sentences each, like a real newspaper)
-{self._guideline_hint(guidelines, cfg)}
+}
 
 Instructions:
 1. TOPIC STRICTNESS: Write ONLY about the literal subject of the topic as given.
@@ -130,7 +130,7 @@ CRITICAL JSON RULES:
 - Replace any in-text double quotes with single quotes (') for dialogue or emphasis.
 - Use only \\n\\n to separate paragraphs inside the "article" field."""
 
-        data = self._call_claude(prompt)
+        data = self._call_claude(prompt, guidelines)
 
         article_text = data.get("article", "")
         vocabulary = data.get("vocabulary", [])
@@ -217,11 +217,18 @@ CRITICAL JSON RULES:
             f"{guidelines}"
         )
 
-    def _call_claude(self, prompt: str) -> dict:
-        message = self._client.messages.create(
-            model=CLAUDE_MODEL,
-            max_tokens=2048,
-            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": prompt}],
+    def _call_claude(self, prompt: str, guidelines: str = "") -> dict:
+    system_blocks = [
+        {"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}},
+    ]
+    if guidelines:
+        system_blocks.append(
+            {"type": "text", "text": guidelines, "cache_control": {"type": "ephemeral"}}
         )
-        return parse_json(message.content[0].text)
+    message = self._client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=2048,
+        system=system_blocks,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return parse_json(message.content[0].text)
